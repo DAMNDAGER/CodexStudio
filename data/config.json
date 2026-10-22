@@ -1,0 +1,94 @@
+{
+  "activeCodexProvider": "codex-relay",
+  "activeImageProvider": "image-relay",
+  "routingMode": "gateway",
+  "syncImageKey": true,
+  "connectionCategory": "relay_api",
+  "officialReasoningEffort": "medium",
+  "officialModel": "gpt-4o",
+  "onboarding_completed": false,
+  "mode1_llm_tool": true,
+  "mode2_prefix_direct": true,
+  "codexProviders": [
+    {
+      "id": "codex-relay",
+      "category": "relay_api",
+      "badge": "推荐 · 一Key双用",
+      "name": "聚合中转站 (OneAPI / NewAPI)",
+      "base_url": "https://api.openai-proxy.org/v1",
+      "model": "gpt-4o",
+      "wire_api": "responses",
+      "api_key": "",
+      "api_keys": [],
+      "notes": "兼容所有标准中转站 · 支持在线拉取模型与一Key双用生图"
+    },
+    {
+      "id": "codex-official",
+      "category": "openai_official",
+      "badge": "OpenAI 官方",
+      "name": "OpenAI 官方直连 (GPT-4o / o3)",
+      "base_url": "https://api.openai.com/v1",
+      "model": "gpt-4o",
+      "wire_api": "responses",
+      "api_key": "",
+      "api_keys": [],
+      "notes": "OpenAI 官方原生渠道 · Responses 协议"
+    },
+    {
+      "id": "codex-deepseek",
+      "category": "deepseek_official",
+      "badge": "DeepSeek 官方",
+      "name": "DeepSeek 官方 (V3 / R1)",
+      "base_url": "https://api.deepseek.com/v1",
+      "model": "deepseek-chat",
+      "wire_api": "chat",
+      "api_key": "",
+      "api_keys": [],
+      "notes": "DeepSeek 官方极速接口 · Chat 协议自动转换"
+    },
+    {
+      "id": "codex-silicon",
+      "category": "claude_relay",
+      "badge": "Claude / 硅基",
+      "name": "Claude 专线 / 硅基流动",
+      "base_url": "https://api.siliconflow.cn/v1",
+      "model": "claude-3-5-sonnet-20241022",
+      "wire_api": "chat",
+      "api_key": "",
+      "api_keys": [],
+      "notes": "Claude 3.5 Sonnet 及开源大模型聚合"
+    }
+  ],
+  "imageProviders": [
+    {
+      "id": "image-relay",
+      "name": "中转站联动生图引擎 (一Key双用)",
+      "base_url": "https://api.openai-proxy.org/v1",
+      "model": "gpt-image-2",
+      "generation_path": "/images/generations",
+      "edit_path": "/images/edits",
+      "image_field": "image",
+      "api_key": ""
+    },
+    {
+      "id": "image-official",
+      "name": "OpenAI 官方独立生图 (DALL-E 3 / GPT-Image)",
+      "base_url": "https://api.openai.com/v1",
+      "model": "dall-e-3",
+      "generation_path": "/images/generations",
+      "edit_path": "/images/edits",
+      "image_field": "image",
+      "api_key": ""
+    },
+    {
+      "id": "image-flux",
+      "name": "FLUX.1 Pro / 第三方独立生图接口",
+      "base_url": "https://api.siliconflow.cn/v1",
+      "model": "black-forest-labs/FLUX.1-pro",
+      "generation_path": "/images/generations",
+      "edit_path": "/images/edits",
+      "image_field": "image",
+      "api_key": ""
+    }
+  ]
+}

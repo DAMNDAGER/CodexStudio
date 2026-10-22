@@ -1,0 +1,45 @@
+# ==============================================================================
+# Codex Studio (.gitignore)
+# Repository ignore rules for clean Git maintenance & GitHub releases
+# ==============================================================================
+
+# Standalone binary distribution directory (bundled in Release ZIP only)
+Image2Studio/
+_internal/
+*.exe
+*.dll
+*.pyd
+
+# Operating system & editor metadata
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# Node.js & runtime
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+package-lock.json
+
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# Local database, session tokens & user outputs
+.image2-token
+image2.sqlite3
+data/*.sqlite*
+data/history.json
+outputs/*.png
+outputs/*.jpg
+outputs/*.webp
+outputs/*.json
+!outputs/.gitkeep

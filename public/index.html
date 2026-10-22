@@ -1,0 +1,2881 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Codex Studio</title>
+  <meta name="image2-local-token" content="AguLw4mZOaKQiKkm5I8V-K8545Dao7LysiUr-2edpqg">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230071E3'><rect width='24' height='24' rx='7' fill='%230071E3'/><path d='M7 8l4 4-4 4M13 16h4' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+  <style>
+/* ==========================================================================
+   Codex Studio v2.5.0 - Apple macOS Sequoia HIG & Spring Physics Animation System
+   ========================================================================== */
+:root {
+  --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --apple-blue: #0071E3;
+  --apple-blue-hover: #0077ED;
+  --apple-blue-glow: rgba(0, 113, 227, 0.36);
+  --apple-indigo: #5E5CE6;
+  --apple-pink: #FF375F;
+  --apple-purple: #BF5AF2;
+  --apple-green: #34C759;
+  --apple-amber: #FF9F0A;
+  --apple-red: #FF453A;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --radius-full: 9999px;
+  --spring-smooth: all 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  --spring-Pop: all 0.36s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+body.apple-light {
+  --bg-desktop: #F4F5F8;
+  --bg-sidebar: rgba(242, 242, 247, 0.86);
+  --bg-card: #FFFFFF;
+  --bg-card-subtle: #F7F8FA;
+  --bg-input: #FFFFFF;
+  --border-subtle: rgba(0, 0, 0, 0.08);
+  --border-highlight: rgba(255, 255, 255, 0.8);
+  --border-focus: #0071E3;
+  --text-primary: #1D1D1F;
+  --text-secondary: #48484A;
+  --text-muted: #86868B;
+  --shadow-card: 0 6px 24px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+  --shadow-hover: 0 12px 32px rgba(0, 113, 227, 0.10), 0 2px 6px rgba(0, 0, 0, 0.04);
+  --shadow-floating: 0 20px 50px rgba(0, 0, 0, 0.16);
+}
+
+body.apple-dark {
+  --bg-desktop: #0F0F12;
+  --bg-sidebar: rgba(20, 20, 24, 0.84);
+  --bg-card: #1A1A1E;
+  --bg-card-subtle: #222227;
+  --bg-input: #1F1F24;
+  --border-subtle: rgba(255, 255, 255, 0.09);
+  --border-highlight: rgba(255, 255, 255, 0.05);
+  --border-focus: #0A84FF;
+  --text-primary: #F5F5F7;
+  --text-secondary: #AEAEB2;
+  --text-muted: #7C7C80;
+  --shadow-card: 0 8px 28px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-hover: 0 14px 36px rgba(0, 0, 0, 0.5), 0 0 20px rgba(10, 132, 255, 0.14);
+  --shadow-floating: 0 24px 64px rgba(0, 0, 0, 0.72), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+body {
+  font-family: var(--font-family);
+  background-color: var(--bg-desktop);
+  color: var(--text-primary);
+  line-height: 1.5;
+  height: 100vh;
+  overflow: hidden;
+  user-select: none;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Custom Sleek Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(142, 142, 147, 0.25); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(142, 142, 147, 0.45); }
+
+.macos-desktop-app { display: flex; width: 100vw; height: 100vh; overflow: hidden; }
+
+/* Keyframe Animations */
+@keyframes cardSpringUp {
+  0% { opacity: 0; transform: translateY(12px) scale(0.99); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes modalPopIn {
+  0% { opacity: 0; transform: scale(0.94) translateY(14px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes islandPop {
+  0% { opacity: 0; transform: translate(-50%, -22px) scale(0.88); }
+  100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+@keyframes pulseGlow {
+  0%, 100% { transform: scale(0.95); opacity: 0.8; box-shadow: 0 0 6px rgba(52, 199, 89, 0.6); }
+  50% { transform: scale(1.22); opacity: 1; box-shadow: 0 0 14px rgba(52, 199, 89, 0.95); }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Sidebar */
+.macos-sidebar {
+  width: 266px;
+  min-width: 266px;
+  background: var(--bg-sidebar);
+  backdrop-filter: blur(32px) saturate(190%);
+  -webkit-backdrop-filter: blur(32px) saturate(190%);
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  padding: 16px 14px;
+  z-index: 10;
+}
+
+.sidebar-top-bar { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 12px 4px; }
+.traffic-lights { display: flex; gap: 8px; }
+.tl-dot {
+  width: 13px; height: 13px; border-radius: 50%; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700;
+  transition: var(--spring-smooth);
+}
+.tl-dot:hover { transform: scale(1.12); }
+.tl-dot span { opacity: 0; transition: opacity 0.15s; }
+.traffic-lights:hover .tl-dot span { opacity: 0.85; }
+.tl-red { background: #FF5F56; color: #4D0000; }
+.tl-yellow { background: #FFBD2E; color: #664400; }
+.tl-green { background: #27C93F; color: #004D0D; }
+
+.app-version-chip {
+  font-size: 11px; font-weight: 700; color: var(--apple-blue);
+  background: rgba(0, 113, 227, 0.14); padding: 2px 9px; border-radius: var(--radius-full);
+}
+
+.app-branding {
+  display: flex; align-items: center; gap: 12px; padding: 4px 6px 14px 6px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.app-logo-squircle {
+  width: 38px; height: 38px; background: linear-gradient(135deg, #0071E3, #5E5CE6);
+  border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  color: #FFF; box-shadow: 0 6px 16px var(--apple-blue-glow);
+  transition: var(--spring-Pop);
+}
+.app-branding:hover .app-logo-squircle { transform: rotate(-4deg) scale(1.05); }
+.app-logo-squircle svg { width: 20px; height: 20px; }
+.app-titles h1 { font-size: 15.5px; font-weight: 700; letter-spacing: -0.3px; color: var(--text-primary); }
+.app-titles p { font-size: 11px; color: var(--text-muted); }
+
+/* Live Gateway Status Pill */
+.gateway-live-pill {
+  margin: 12px 2px 6px 2px; padding: 9px 11px;
+  background: var(--bg-card); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md); display: flex; flex-direction: column; gap: 4px;
+  box-shadow: var(--shadow-card); transition: var(--spring-smooth);
+}
+.gateway-pill-top { display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 600; color: var(--text-primary); }
+.gateway-pill-sub { font-size: 10.5px; color: var(--text-muted); padding-left: 16px; }
+.live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--apple-green); animation: pulseGlow 2s infinite; }
+
+.sidebar-nav-section-title {
+  font-size: 11px; font-weight: 600; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.4px; margin: 14px 8px 6px 8px;
+}
+.macos-nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px; padding: 8.5px 11px;
+  background: transparent; border: none; border-radius: var(--radius-md);
+  color: var(--text-secondary); font-size: 13px; font-weight: 500;
+  cursor: pointer; text-align: left; transition: var(--spring-smooth);
+}
+.nav-item:hover { background: var(--border-subtle); color: var(--text-primary); transform: translateX(3px); }
+.nav-item:active { transform: scale(0.98); }
+.nav-item.active {
+  background: linear-gradient(135deg, #0071E3, #005BB5);
+  color: #FFF; font-weight: 600; box-shadow: 0 4px 14px var(--apple-blue-glow);
+  transform: translateX(0);
+}
+.nav-item.active .nav-icon { background: rgba(255, 255, 255, 0.22) !important; color: #FFF !important; }
+.nav-item.active .nav-badge, .nav-item.active .nav-counter { background: rgba(255, 255, 255, 0.25); color: #FFF; }
+
+.nav-icon { width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center; justify-content: center; transition: var(--spring-smooth); }
+.nav-icon svg { width: 15px; height: 15px; }
+.squircle-blue { background: rgba(0, 113, 227, 0.15); color: var(--apple-blue); }
+.squircle-indigo { background: rgba(94, 92, 230, 0.15); color: var(--apple-indigo); }
+.squircle-pink { background: rgba(255, 55, 95, 0.15); color: var(--apple-pink); }
+.squircle-purple { background: rgba(191, 90, 242, 0.15); color: var(--apple-purple); }
+.squircle-gray { background: rgba(142, 142, 147, 0.15); color: var(--text-secondary); }
+.squircle-amber { background: rgba(255, 159, 10, 0.15); color: var(--apple-amber); }
+.squircle-green { background: rgba(52, 199, 89, 0.15); color: var(--apple-green); }
+
+.nav-text { flex: 1; }
+.nav-badge, .nav-counter {
+  font-size: 10px; font-weight: 600; padding: 2px 7px;
+  border-radius: var(--radius-full); background: var(--border-subtle); color: var(--text-muted);
+}
+
+.sidebar-footer { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--border-subtle); display: flex; flex-direction: column; gap: 8px; }
+.telemetry-card { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 9px 12px; }
+.telemetry-header { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-muted); }
+.btn-clean-ram { background: var(--border-subtle); border: none; border-radius: var(--radius-sm); padding: 2px 8px; font-size: 10px; color: var(--text-secondary); cursor: pointer; transition: var(--spring-smooth); }
+.btn-clean-ram:hover { background: var(--apple-blue); color: #FFF; }
+.telemetry-meter { display: flex; align-items: baseline; gap: 6px; margin-top: 3px; }
+.mem-val { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.mem-lbl { font-size: 10px; color: var(--text-muted); }
+
+.btn-sidebar-quit {
+  width: 100%; padding: 8.5px 12px; border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 69, 58, 0.35); background: rgba(255, 69, 58, 0.12);
+  color: var(--apple-red); font-size: 12px; font-weight: 600; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 6px; transition: var(--spring-smooth);
+}
+.btn-sidebar-quit:hover { background: var(--apple-red); color: #FFF; transform: translateY(-1px); }
+
+/* Main Stage */
+.macos-main { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; background: var(--bg-desktop); }
+.main-header-bar {
+  height: 62px; padding: 0 28px; display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border-subtle); background: var(--bg-desktop); flex-shrink: 0;
+}
+.header-titles h2 { font-size: 17.5px; font-weight: 700; letter-spacing: -0.3px; color: var(--text-primary); }
+.header-desc { font-size: 12px; color: var(--text-muted); }
+.header-actions { display: flex; gap: 8px; align-items: center; }
+
+.tab-viewport { flex: 1; overflow-y: auto; padding: 22px 28px 44px 28px; }
+.tab-pane { display: none; }
+.tab-pane.active { display: block; animation: cardSpringUp 0.32s cubic-bezier(0.22, 1, 0.36, 1); }
+
+/* Apple Buttons with Tactile Feedback */
+.apple-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 15px;
+  border-radius: var(--radius-md); font-size: 12.5px; font-weight: 600;
+  border: none; cursor: pointer; transition: var(--spring-smooth);
+}
+.apple-btn:active { transform: scale(0.96) !important; }
+.apple-btn-primary {
+  background: linear-gradient(180deg, #0A84FF 0%, #0066CC 100%);
+  color: #FFF; box-shadow: 0 4px 14px var(--apple-blue-glow);
+}
+.apple-btn-primary:hover { filter: brightness(1.08); transform: translateY(-1.5px); box-shadow: 0 6px 20px var(--apple-blue-glow); }
+.apple-btn-secondary { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-subtle); }
+.apple-btn-secondary:hover { background: var(--bg-card-subtle); border-color: rgba(0, 113, 227, 0.4); transform: translateY(-1px); }
+.apple-btn-accent {
+  background: linear-gradient(135deg, rgba(0, 113, 227, 0.16), rgba(94, 92, 230, 0.16));
+  color: var(--apple-blue); border: 1px solid rgba(0, 113, 227, 0.35);
+}
+.apple-btn-accent:hover { background: var(--apple-blue); color: #FFF; transform: translateY(-1px); }
+.apple-btn-danger { background: rgba(255, 69, 58, 0.14); color: var(--apple-red); border: 1px solid rgba(255, 69, 58, 0.3); }
+.apple-btn-danger:hover { background: var(--apple-red); color: #FFF; transform: translateY(-1px); }
+
+/* Distinct Connection Category Tabs */
+.category-tabs-bar {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px;
+}
+.category-tab-card {
+  background: var(--bg-card); border: 1.5px solid var(--border-subtle);
+  border-radius: var(--radius-lg); padding: 15px 16px; cursor: pointer;
+  transition: var(--spring-smooth); display: flex; align-items: flex-start; gap: 12px;
+  box-shadow: var(--shadow-card);
+}
+.category-tab-card:hover { border-color: rgba(0, 113, 227, 0.45); transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+.category-tab-card.active {
+  border-color: var(--apple-blue);
+  background: linear-gradient(135deg, rgba(0, 113, 227, 0.12), transparent), var(--bg-card);
+  box-shadow: 0 6px 22px var(--apple-blue-glow);
+}
+.cat-icon {
+  width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center;
+  justify-content: center; font-size: 18px; flex-shrink: 0;
+}
+.cat-info h4 { font-size: 13.5px; font-weight: 700; color: var(--text-primary); margin-bottom: 3px; }
+.cat-info p { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+
+/* Cards & Grids */
+.apple-card {
+  background: var(--bg-card); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg); padding: 20px 22px; box-shadow: var(--shadow-card);
+  transition: var(--spring-smooth);
+}
+.section-title-row { display: flex; justify-content: space-between; align-items: center; margin: 16px 0 10px 0; }
+.section-title-row h4 { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.section-hint { font-size: 12px; color: var(--text-muted); }
+
+.provider-cards-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px;
+}
+.provider-card {
+  background: var(--bg-card); border: 1.5px solid var(--border-subtle);
+  border-radius: var(--radius-lg); padding: 14px 16px; cursor: pointer;
+  transition: var(--spring-smooth); display: flex; flex-direction: column; justify-content: space-between; min-height: 110px;
+  box-shadow: var(--shadow-card); animation: cardSpringUp 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.provider-card:hover { border-color: rgba(0, 113, 227, 0.45); transform: translateY(-3px); box-shadow: var(--shadow-hover); }
+.provider-card.active {
+  border-color: var(--apple-blue);
+  background: linear-gradient(135deg, rgba(0, 113, 227, 0.1), transparent), var(--bg-card);
+  box-shadow: 0 6px 20px var(--apple-blue-glow);
+}
+.card-top-info { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.provider-name { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.provider-model-tag { font-size: 11.5px; color: var(--apple-blue); font-weight: 600; margin-top: 2px; }
+.provider-url-tag { font-size: 10.5px; color: var(--text-muted); margin-top: 2px; word-break: break-all; }
+.active-check-badge {
+  width: 21px; height: 21px; border-radius: 50%; background: var(--apple-blue);
+  color: #FFF; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0;
+}
+.provider-meta-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; font-size: 11px; color: var(--text-muted); }
+.protocol-chip { background: var(--border-subtle); padding: 2px 8px; border-radius: var(--radius-sm); font-weight: 600; }
+
+/* Forms & Fetched Model Dropdown Boxes */
+.card-header-clean { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.card-header-clean h4 { font-size: 15px; font-weight: 700; }
+.badge-blue { background: rgba(0, 113, 227, 0.14); color: var(--apple-blue); padding: 3px 10px; border-radius: var(--radius-full); font-size: 11px; font-weight: 600; }
+.badge-green { background: rgba(52, 199, 89, 0.16); color: var(--apple-green); padding: 3px 10px; border-radius: var(--radius-full); font-size: 11px; font-weight: 600; }
+
+.apple-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+.form-cell label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
+.form-cell input, .form-cell select {
+  width: 100%; padding: 9.5px 12px; background: var(--bg-input);
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
+  color: var(--text-primary); font-size: 13px; font-family: inherit; outline: none; user-select: text;
+  transition: var(--spring-smooth);
+}
+.form-cell input:focus, .form-cell select:focus {
+  border-color: var(--border-focus); box-shadow: 0 0 0 3.5px var(--apple-blue-glow);
+}
+.wizard-cell-full { grid-column: 1 / -1; }
+.input-with-action { position: relative; display: flex; align-items: center; }
+.btn-toggle-visibility { position: absolute; right: 10px; background: transparent; border: none; cursor: pointer; color: var(--text-muted); font-size: 14px; }
+
+.fetched-dropdown-banner {
+  background: linear-gradient(135deg, rgba(0, 113, 227, 0.09), rgba(94, 92, 230, 0.09));
+  border: 1px solid rgba(0, 113, 227, 0.32);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  animation: cardSpringUp 0.25s ease;
+}
+.fetched-dropdown-banner label {
+  font-size: 11.5px !important;
+  color: var(--apple-blue) !important;
+  font-weight: 700 !important;
+  margin-bottom: 5px !important;
+}
+
+.card-footer-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border-subtle); }
+
+/* iOS Switch */
+.ios-switch { position: relative; display: inline-block; width: 44px; height: 25px; flex-shrink: 0; }
+.ios-switch input { opacity: 0; width: 0; height: 0; }
+.ios-slider {
+  position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+  background-color: var(--border-subtle); border-radius: 25px; transition: 0.25s;
+}
+.ios-slider:before {
+  position: absolute; content: ""; height: 19px; width: 19px; left: 3px; bottom: 3px;
+  background-color: white; border-radius: 50%; transition: 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ios-switch input:checked + .ios-slider { background-color: var(--apple-blue); }
+.ios-switch input:checked + .ios-slider:before { transform: translateX(19px); }
+
+/* Feature Toggle Card (Expanded with Inline Image Model Selector!) */
+.apple-toggle-feature-card {
+  display: flex; flex-direction: column; gap: 12px;
+  background: var(--bg-card-subtle); border: 1.5px solid var(--border-subtle);
+  border-radius: var(--radius-lg); padding: 14px 16px; margin-top: 4px;
+  transition: var(--spring-smooth);
+}
+.apple-toggle-feature-card:hover { border-color: rgba(0, 113, 227, 0.35); }
+.feature-card-top-row { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+.feature-card-info { display: flex; align-items: center; gap: 12px; }
+.feature-card-icon { width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.feature-card-texts h5 { font-size: 13.5px; font-weight: 700; color: var(--text-primary); }
+.feature-card-texts p { font-size: 11.5px; color: var(--text-muted); }
+.feature-card-inline-box {
+  display: flex; flex-direction: column; gap: 8px;
+  padding-top: 10px; border-top: 1px dashed var(--border-subtle);
+}
+
+/* Preset Pills */
+.preset-pills-row { display: flex; flex-wrap: wrap; gap: 7px; margin: 6px 0; }
+.preset-pill {
+  background: var(--bg-card-subtle); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full); padding: 5px 12px; font-size: 11.5px; font-weight: 600;
+  color: var(--text-secondary); cursor: pointer; transition: var(--spring-smooth);
+}
+.preset-pill:hover { border-color: var(--apple-blue); color: var(--text-primary); transform: translateY(-1px); }
+.preset-pill:active { transform: scale(0.95); }
+.preset-pill.active { background: var(--apple-blue); border-color: var(--apple-blue); color: #FFF; box-shadow: 0 2px 10px var(--apple-blue-glow); }
+.quick-model-tag {
+  background: var(--border-subtle); border: 1px solid transparent; padding: 3.5px 9px;
+  border-radius: 6px; font-size: 11px; font-weight: 600; color: var(--text-secondary); cursor: pointer;
+  transition: var(--spring-smooth);
+}
+.quick-model-tag:hover { background: var(--apple-blue); color: #FFF; transform: translateY(-1px); }
+
+/* Live Capture Monitor Box */
+.live-monitor-card {
+  background: var(--bg-card); border: 1.5px solid rgba(52, 199, 89, 0.28);
+  border-radius: var(--radius-lg); padding: 16px 20px; margin-top: 18px;
+  box-shadow: var(--shadow-card);
+}
+.live-events-list {
+  max-height: 190px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-top: 10px;
+}
+.live-event-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: var(--bg-card-subtle); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm); padding: 8px 12px; font-size: 12px;
+  animation: cardSpringUp 0.2s ease;
+}
+.evt-left { display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden; }
+.evt-time { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
+.evt-source { background: rgba(0, 113, 227, 0.14); color: var(--apple-blue); padding: 1px 6px; border-radius: 4px; font-size: 10.5px; font-weight: 600; flex-shrink: 0; }
+.evt-msg { color: var(--text-primary); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.evt-action { font-size: 11px; color: var(--apple-green); flex-shrink: 0; font-weight: 600; }
+
+/* Dual Engine Cards */
+.dual-engine-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.engine-card { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 20px; display: flex; flex-direction: column; box-shadow: var(--shadow-card); }
+.engine-card-top { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.engine-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+.engine-icon svg { width: 20px; height: 20px; }
+.engine-header-info { flex: 1; }
+.engine-header-info h3 { font-size: 15px; font-weight: 700; }
+.engine-badge-tag { font-size: 11px; color: var(--text-muted); }
+.engine-desc-body { font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; flex: 1; }
+.engine-desc-body ul { margin-top: 8px; padding-left: 18px; }
+.engine-meta-bar { display: flex; justify-content: space-between; margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border-subtle); font-size: 11px; color: var(--text-muted); }
+
+/* Simulator */
+.simulator-box { display: flex; flex-direction: column; gap: 12px; }
+.simulator-input-row { display: flex; gap: 10px; }
+.simulator-input-row input { flex: 1; padding: 9px 14px; background: var(--bg-input); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); color: var(--text-primary); font-size: 13px; }
+.sim-result-card { background: var(--bg-card-subtle); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 12px 16px; }
+.sim-status-chip { font-size: 13px; font-weight: 700; color: var(--apple-blue); margin-bottom: 4px; }
+.sim-flow-text { font-size: 12px; color: var(--text-secondary); }
+
+/* Creative Canvas */
+.creative-workspace { display: flex; flex-direction: column; height: calc(100vh - 110px); position: relative; }
+.creative-canvas-stage {
+  flex: 1; background: var(--bg-card); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl); overflow: hidden; display: flex; align-items: center; justify-content: center;
+  position: relative; margin-bottom: 72px; box-shadow: var(--shadow-card);
+}
+.canvas-empty-state { text-align: center; max-width: 520px; padding: 24px; }
+.empty-icon-ring { width: 56px; height: 56px; border-radius: 50%; background: rgba(0, 113, 227, 0.12); color: var(--apple-blue); display: flex; align-items: center; justify-content: center; margin: 0 auto 14px auto; }
+.empty-icon-ring svg { width: 26px; height: 26px; }
+.inspirational-tags { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 14px; }
+.inspire-chip { background: var(--bg-card-subtle); border: 1px solid var(--border-subtle); border-radius: var(--radius-full); padding: 6px 13px; font-size: 12px; color: var(--text-secondary); cursor: pointer; transition: var(--spring-smooth); }
+.inspire-chip:hover { background: var(--apple-blue); color: #FFF; transform: translateY(-2px); }
+
+.apple-spinner-ring { width: 42px; height: 42px; border: 3.5px solid var(--border-subtle); border-top-color: var(--apple-blue); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 14px auto; }
+
+.canvas-result-view { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; background: #000; }
+.canvas-result-view img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.canvas-floating-actions { position: absolute; bottom: 18px; display: flex; gap: 10px; background: rgba(28, 28, 30, 0.82); backdrop-filter: blur(20px); padding: 6px 12px; border-radius: var(--radius-full); }
+.glass-action-btn { background: transparent; border: none; color: #FFF; font-size: 12px; padding: 4px 10px; border-radius: var(--radius-full); cursor: pointer; }
+.glass-action-btn:hover { background: rgba(255, 255, 255, 0.2); }
+
+.card-quick-reveal-btn {
+  position: absolute; top: 8px; right: 8px;
+  background: rgba(28, 28, 30, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.25); color: #FFFFFF; border-radius: var(--radius-full);
+  padding: 4px 10px; font-size: 11px; font-weight: 600; cursor: pointer;
+  opacity: 0; transform: translateY(-4px); transition: var(--spring-smooth); z-index: 5;
+}
+.gallery-item-card:hover .card-quick-reveal-btn { opacity: 1; transform: translateY(0); }
+.card-quick-reveal-btn:hover { background: var(--apple-blue); border-color: var(--apple-blue); box-shadow: 0 4px 12px var(--apple-blue-glow); }
+
+.btn-card-reveal-text {
+  background: var(--border-subtle); border: none; border-radius: 4px; padding: 2px 6px;
+  font-size: 10.5px; color: var(--apple-blue); font-weight: 600; cursor: pointer; transition: var(--transition-smooth);
+}
+.btn-card-reveal-text:hover { background: var(--apple-blue); color: #FFFFFF; }
+
+
+
+
+
+.floating-command-bar { position: absolute; bottom: 4px; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; z-index: 20; }
+.command-bar-inner {
+  width: 100%; max-width: 840px; background: var(--bg-card); border: 1.5px solid var(--border-subtle);
+  border-radius: var(--radius-full); padding: 6px 10px 6px 14px; display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow-floating);
+  transition: var(--spring-smooth);
+}
+.command-bar-inner:focus-within { border-color: var(--apple-blue); box-shadow: 0 16px 48px var(--apple-blue-glow); }
+.cmd-icon-btn { background: transparent; border: none; color: var(--text-secondary); cursor: pointer; padding: 6px; border-radius: 50%; }
+.cmd-icon-btn svg { width: 18px; height: 18px; }
+.command-bar-inner textarea { flex: 1; background: transparent; border: none; color: var(--text-primary); font-size: 13px; font-family: inherit; resize: none; outline: none; max-height: 60px; padding: 4px 0; }
+.ratio-capsule-picker { display: flex; background: var(--bg-card-subtle); padding: 2px; border-radius: var(--radius-full); border: 1px solid var(--border-subtle); }
+.ratio-pill { background: transparent; border: none; border-radius: var(--radius-full); padding: 4px 9px; font-size: 11px; font-weight: 600; color: var(--text-secondary); cursor: pointer; }
+.ratio-pill.active { background: var(--apple-blue); color: #FFF; }
+.cmd-submit-btn { background: var(--apple-blue); color: #FFF; border: none; border-radius: var(--radius-full); padding: 8px 16px; font-size: 12.5px; font-weight: 600; display: flex; align-items: center; gap: 5px; cursor: pointer; transition: var(--spring-smooth); }
+.cmd-submit-btn:hover { background: var(--apple-blue-hover); transform: scale(1.03); }
+
+.ref-pills-strip { display: flex; gap: 8px; margin-bottom: 8px; max-width: 840px; width: 100%; }
+.ref-pill-item { display: flex; align-items: center; gap: 6px; background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-full); padding: 3px 8px 3px 4px; font-size: 11px; }
+.ref-pill-item img { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; }
+.ref-pill-close { background: transparent; border: none; cursor: pointer; color: var(--text-muted); }
+
+/* Gallery */
+.gallery-action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.gallery-masonry { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 16px; }
+.gallery-item-card { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); overflow: hidden; cursor: pointer; transition: var(--spring-smooth); }
+.gallery-item-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-floating); }
+.gallery-thumb-wrap { width: 100%; aspect-ratio: 1; background: #000; overflow: hidden; }
+.gallery-thumb-wrap img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.35s ease; }
+.gallery-item-card:hover .gallery-thumb-wrap img { transform: scale(1.06); }
+.gallery-info-bar { padding: 10px 12px; }
+.gallery-prompt-snippet { font-size: 12px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.gallery-date-row { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+
+/* Settings & Storage Info */
+.settings-group-title { font-size: 12.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 10px; }
+.info-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-subtle); font-size: 12.5px; gap: 12px; }
+.info-row:last-child { border-bottom: none; }
+.info-label { color: var(--text-secondary); flex-shrink: 0; }
+.info-value { color: var(--text-primary); font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px; word-break: break-all; user-select: text; text-align: right; }
+
+/* Modals & Interactive Onboarding Tutorial */
+.apple-modal-lightbox, .apple-modal-onboarding {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1500;
+  display: flex; align-items: center; justify-content: center;
+}
+.lightbox-overlay, .onboarding-overlay {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.74); backdrop-filter: blur(26px); -webkit-backdrop-filter: blur(26px);
+}
+.lightbox-dialog { position: relative; z-index: 10; background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-xl); max-width: 90vw; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; animation: modalPopIn 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
+.lightbox-close-btn { position: absolute; top: 12px; right: 12px; width: 30px; height: 30px; border-radius: 50%; background: rgba(0,0,0,0.6); border: none; color: #FFF; font-size: 18px; cursor: pointer; z-index: 20; }
+.lightbox-image-wrap { background: #000; display: flex; align-items: center; justify-content: center; max-height: 72vh; }
+.lightbox-image-wrap img { max-width: 100%; max-height: 72vh; object-fit: contain; }
+.lightbox-meta { padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; gap: 14px; }
+
+.onboarding-dialog {
+  position: relative; z-index: 10; width: 94%; max-width: 740px; max-height: 92vh; overflow-y: auto;
+  background: var(--bg-card); border: 1.5px solid rgba(0, 113, 227, 0.35); border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-floating); padding: 24px 28px; display: flex; flex-direction: column;
+  animation: modalPopIn 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.onboarding-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border-subtle); }
+.onboarding-header-left { display: flex; align-items: center; gap: 12px; }
+.onboarding-logo { width: 42px; height: 42px; border-radius: 11px; background: linear-gradient(135deg, #0071E3, #5E5CE6); display: flex; align-items: center; justify-content: center; font-size: 20px; color: #FFF; box-shadow: 0 4px 14px var(--apple-blue-glow); }
+.onboarding-close-btn { background: var(--border-subtle); border: none; width: 28px; height: 28px; border-radius: 50%; color: var(--text-muted); font-size: 16px; cursor: pointer; transition: var(--spring-smooth); }
+.onboarding-close-btn:hover { background: var(--apple-red); color: #FFF; }
+
+/* Interactive Onboarding Stepper Bar */
+.wizard-stepper-bar {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px;
+}
+.wizard-step-pill {
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+  border-radius: var(--radius-md); background: var(--bg-card-subtle);
+  border: 1px solid var(--border-subtle); cursor: pointer; transition: var(--spring-smooth);
+  font-size: 12px; font-weight: 600; color: var(--text-secondary);
+}
+.wizard-step-pill.active {
+  border-color: var(--apple-blue); background: rgba(0, 113, 227, 0.12); color: var(--text-primary);
+}
+.step-num { width: 20px; height: 20px; border-radius: 50%; background: var(--apple-blue); color: #FFF; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+.wizard-step-section { margin-bottom: 14px; animation: cardSpringUp 0.25s ease; }
+.wizard-step-title { display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+.wizard-step-left { display: flex; align-items: center; gap: 8px; }
+.wizard-card { background: var(--bg-card-subtle); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 14px 16px; }
+.wizard-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.wizard-cell label { display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
+.wizard-cell input, .wizard-cell select { width: 100%; padding: 8.5px 10px; background: var(--bg-input); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); color: var(--text-primary); font-size: 12.5px; user-select: text; }
+
+.wizard-mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.wizard-mode-card { background: var(--bg-card); border: 1.5px solid var(--border-subtle); border-radius: var(--radius-md); padding: 11px 13px; cursor: pointer; transition: var(--spring-smooth); }
+.wizard-mode-card:hover { border-color: rgba(0, 113, 227, 0.4); }
+.wizard-mode-card.active { border-color: var(--apple-blue); background: rgba(0, 113, 227, 0.1); }
+.wizard-mode-card h5 { font-size: 12.5px; font-weight: 700; margin-bottom: 2px; }
+.wizard-mode-card p { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+
+.tutorial-showcase-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+.tutorial-cmd-card {
+  background: #141417; border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md); padding: 10px 12px; font-size: 11.5px; color: #D1D1D6;
+}
+.tutorial-cmd-card code { display: block; color: #34C759; font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; margin-top: 4px; }
+
+.onboarding-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--border-subtle); }
+
+/* Floating Dynamic Island Toast */
+.apple-floating-toast {
+  position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 3000;
+  background: rgba(20, 20, 24, 0.94); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
+  border: 1.5px solid rgba(0, 113, 227, 0.55); border-radius: var(--radius-full);
+  padding: 9px 22px; color: #FFF; box-shadow: var(--shadow-floating);
+  font-size: 13px; font-weight: 600; max-width: 88vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  animation: islandPop 0.34s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.toast-content { display: flex; align-items: center; gap: 8px; }
+
+.hidden { display: none !important; }
+.hidden-input { display: none; }
+.mt-12 { margin-top: 12px; }
+.mt-16 { margin-top: 16px; }
+.mt-20 { margin-top: 20px; }
+  </style>
+</head>
+<body class="apple-dark">
+  <!-- Dynamic Island Toast Notification -->
+  <div id="noticeBanner" class="apple-floating-toast hidden">
+    <div class="toast-content">
+      <span class="toast-icon" id="noticeIcon">📡</span>
+      <span id="noticeMessage">系统就绪</span>
+    </div>
+  </div>
+
+  <div class="macos-desktop-app">
+    <!-- Left Sidebar -->
+    <aside class="macos-sidebar">
+      <div class="sidebar-top-bar">
+        <div class="traffic-lights">
+          <button id="btnShutdownDaemon" class="tl-dot tl-red" title="彻底关闭后台服务并退出"><span>×</span></button>
+          <button id="btnTriggerGC" class="tl-dot tl-yellow" title="压缩整理内存"><span>−</span></button>
+          <button id="btnToggleTheme" class="tl-dot tl-green" title="切换深色 / 浅色外观"><span>+</span></button>
+        </div>
+        <div class="app-version-chip">Sequoia 2.3</div>
+      </div>
+
+      <div class="app-branding">
+        <div class="app-logo-squircle">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="4 17 10 11 4 5"></polyline>
+            <line x1="12" y1="19" x2="20" y2="19"></line>
+          </svg>
+        </div>
+        <div class="app-titles">
+          <h1>Codex Studio</h1>
+          <p>AI Gateway & Visual Engine</p>
+        </div>
+      </div>
+
+      <!-- Live Gateway Capture Pill -->
+      <div class="gateway-live-pill" id="sidebarGatewayStatus">
+        <div class="gateway-pill-top">
+          <span class="live-dot"></span>
+          <span id="sidebarGatewayText">127.0.0.1:8765/v1 监听中</span>
+        </div>
+        <div class="gateway-pill-sub" id="sidebarCaptureCounter">已捕捉 0 次请求 · 全局 Skill 已就绪</div>
+      </div>
+
+      <div class="sidebar-nav-section-title">工作台导航</div>
+      <nav class="macos-nav">
+        <button class="nav-item active" data-tab="tab-codex-hub">
+          <span class="nav-icon squircle-blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          </span>
+          <span class="nav-text">Codex 接入与渠道</span>
+        </button>
+
+        <button class="nav-item" data-tab="tab-dual-engine">
+          <span class="nav-icon squircle-indigo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </span>
+          <span class="nav-text">双引擎拦截与监控</span>
+          <span class="nav-badge" id="badgeEngineStatus">1+2 开</span>
+        </button>
+
+        <button class="nav-item" data-tab="tab-creative-canvas">
+          <span class="nav-icon squircle-pink">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </span>
+          <span class="nav-text">AI 视觉工坊</span>
+        </button>
+
+        <button class="nav-item" data-tab="tab-gallery">
+          <span class="nav-icon squircle-purple">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/></svg>
+          </span>
+          <span class="nav-text">本地作品画廊</span>
+          <span class="nav-counter" id="galleryCountBadge">0</span>
+        </button>
+
+        <button class="nav-item" data-tab="tab-settings">
+          <span class="nav-icon squircle-gray">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </span>
+          <span class="nav-text">生图设置与数据清理</span>
+        </button>
+
+        <button class="nav-item" id="btnNavOnboarding">
+          <span class="nav-icon squircle-amber">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          </span>
+          <span class="nav-text">新手教学向导</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="telemetry-card">
+          <div class="telemetry-header">
+            <span>微内核内存</span>
+            <button id="btnQuickGC" class="btn-clean-ram">整理</button>
+          </div>
+          <div class="telemetry-meter">
+            <span id="txtMemHeap" class="mem-val">4.1 MB</span>
+            <span class="mem-lbl">常驻守护</span>
+          </div>
+        </div>
+        <button type="button" id="btnSidebarFullQuit" class="btn-sidebar-quit" title="彻底停止 8765 后台服务并关闭软件">
+          <span>🛑 彻底关闭后台并退出</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Stage -->
+    <main class="macos-main">
+      <header class="main-header-bar">
+        <div class="header-titles">
+          <h2 id="mainStageTitle">Codex 接入与渠道中枢</h2>
+          <span id="mainStageSubtitle" class="header-desc">按分类提供差异化接入 · 支持编程与生图双模型在线拉取与智能容错</span>
+        </div>
+        <div class="header-actions">
+          <button id="btnOpenOnboardingGuide" class="apple-btn apple-btn-accent">
+            <span>💡 新手教学向导</span>
+          </button>
+          <button id="btnHeaderFullQuit" class="apple-btn apple-btn-danger" title="彻底关闭后台进程并退出">
+            <span>🛑 关闭后台</span>
+          </button>
+          <button id="btnApplyCodex" class="apple-btn apple-btn-primary">
+            <span>🚀 同步并激活 Codex</span>
+          </button>
+        </div>
+      </header>
+
+      <div class="tab-viewport">
+        <!-- TAB 1: CODEX HUB WITH 3 DISTINCT CONNECTION CATEGORIES -->
+        <section id="tab-codex-hub" class="tab-pane active">
+          <div class="category-tabs-bar">
+            <div class="category-tab-card active" data-cat="relay_api" id="catCardRelay">
+              <div class="cat-icon squircle-blue">🌐</div>
+              <div class="cat-info">
+                <h4>模式一：中转站 / 商业 API 多渠道管理</h4>
+                <p>统一管理多个中转站、DeepSeek、硅基流动或 OpenAI Key，支持编程与生图双模型拉取</p>
+              </div>
+            </div>
+
+            <div class="category-tab-card" data-cat="official_skill" id="catCardOfficial">
+              <div class="cat-icon squircle-green">🔐</div>
+              <div class="cat-info">
+                <h4>模式二：Codex 官方账号 + 视觉 Skill 挂载</h4>
+                <p>保留 Codex 客户端官方 OAuth 登录与 6.1 Sol 等原生模型，仅为其注入本地生图能力</p>
+              </div>
+            </div>
+
+            <div class="category-tab-card" data-cat="local_llm" id="catCardLocal">
+              <div class="cat-icon squircle-purple">💻</div>
+              <div class="cat-info">
+                <h4>模式三：本地算力免 Key 直连 (Ollama)</h4>
+                <p>免填 API Key，一键扫描本机 11434 / 1234 端口已安装的 Qwen-Coder、DeepSeek 本地模型</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- PANEL A: MULTI-API PROFILE MANAGER -->
+          <div id="panelCatRelay">
+            <div class="section-title-row">
+              <h4>已保存的 API 渠道列表（点击卡片即刻切换，可自由新增多个中转站渠道）</h4>
+              <button type="button" id="btnAddNewApiProfile" class="apple-btn apple-btn-secondary" style="padding:5px 12px;font-size:12px;">
+                <span>➕ 新增 API 渠道</span>
+              </button>
+            </div>
+
+            <div class="provider-cards-grid" id="codexProviderGrid"></div>
+
+            <!-- Selected API Profile Editor -->
+            <div class="apple-card mt-16">
+              <div class="card-header-clean">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <h4>配置选定的 API 渠道凭据</h4>
+                  <span id="configDrawerProviderName" class="badge-blue">主力中转站 API #1</span>
+                </div>
+                <div style="display:flex;gap:8px;">
+                  <button type="button" id="btnProbeApi" class="apple-btn apple-btn-secondary" style="padding:5px 12px;font-size:11.5px;">
+                    <span>⚡ 测速与连通检测</span>
+                  </button>
+                  <button type="button" id="btnDeleteApiProfile" class="apple-btn apple-btn-danger" style="padding:5px 12px;font-size:11.5px;">
+                    <span>🗑️ 删除此渠道</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="apple-form-grid">
+                <div class="form-cell">
+                  <label>渠道显示名称</label>
+                  <input type="text" id="inputCodexName" placeholder="例如：主力中转站 Euzhi / 备用硅基流动">
+                </div>
+
+                <div class="form-cell">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+                    <label style="margin:0;">接口地址 (Base URL · 通常以 /v1 结尾)</label>
+                    <div style="display:flex;gap:4px;">
+                      <button type="button" class="quick-model-tag btn-quick-url" data-url="https://euzhi.vip/v1">Euzhi中转</button>
+                      <button type="button" class="quick-model-tag btn-quick-url" data-url="https://api.openai-proxy.org/v1">标准中转</button>
+                      <button type="button" class="quick-model-tag btn-quick-url" data-url="https://api.siliconflow.cn/v1">硅基流动</button>
+                    </div>
+                  </div>
+                  <input type="text" id="inputCodexBaseUrl" placeholder="https://euzhi.vip/v1">
+                </div>
+
+                <div class="form-cell wizard-cell-full">
+                  <label>API Key / 中转站令牌 (sk-...)</label>
+                  <div class="input-with-action">
+                    <input type="password" id="inputCodexApiKey" placeholder="填入中转站或官方 sk- 令牌（已保存则显示掩码，不修改可保持原样）">
+                    <button type="button" class="btn-toggle-visibility" id="btnToggleKeyVis">👁</button>
+                  </div>
+                </div>
+
+                <!-- Coding Model Fetch & Selector -->
+                <div class="form-cell wizard-cell-full">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                    <label style="margin:0;">💻 编程主力大模型（可在线拉取中转站模型列表或直接输入）</label>
+                    <button type="button" id="btnMainFetchModels" class="apple-btn apple-btn-accent" style="padding:5px 12px;font-size:11.5px;">
+                      <span>🔄 在线拉取编程与生图模型列表</span>
+                    </button>
+                  </div>
+                  <div id="mainModelSelectArea" class="fetched-dropdown-banner hidden">
+                    <label id="lblMainFetchedCount">✓ 已从中转站获取可用编程模型列表（点击下拉直接选取）：</label>
+                    <select id="mainModelSelect"></select>
+                  </div>
+                  <div class="preset-pills-row">
+                    <button type="button" class="preset-pill btn-quick-model" data-model="gpt-5-codex" data-wire="responses">⚡️ gpt-5-codex</button>
+                    <button type="button" class="preset-pill btn-quick-model" data-model="gpt-4o" data-wire="responses">⚡️ gpt-4o</button>
+                    <button type="button" class="preset-pill btn-quick-model" data-model="o3-mini" data-wire="responses">🚀 o3-mini</button>
+                    <button type="button" class="preset-pill btn-quick-model" data-model="claude-3-5-sonnet-20241022" data-wire="chat">🟣 claude-3-5-sonnet</button>
+                    <button type="button" class="preset-pill btn-quick-model" data-model="deepseek-chat" data-wire="chat">🇨🇳 deepseek-chat</button>
+                  </div>
+                  <input type="text" id="inputCodexModel" placeholder="例如: gpt-4o, gpt-6.1-sol, claude-3-5-sonnet" value="gpt-4o">
+                </div>
+
+                <!-- One-Key Dual-Use Card WITH INLINE IMAGE MODEL FETCH & SELECTOR! -->
+                <div class="form-cell wizard-cell-full">
+                  <div class="apple-toggle-feature-card">
+                    <div class="feature-card-top-row">
+                      <div class="feature-card-info">
+                        <div class="feature-card-icon squircle-pink">🎨</div>
+                        <div class="feature-card-texts">
+                          <h5>一 Key 双用 · 自动联动视觉生图引擎（支持直接拉取并选取生图模型）</h5>
+                          <p>开启后自动复用当前中转站的 Key 与 Base URL 进行画图；若当前模型不可用，系统还支持自动探测中转站可用生图模型</p>
+                        </div>
+                      </div>
+                      <label class="ios-switch">
+                        <input type="checkbox" id="chkMainSyncImage" checked>
+                        <span class="ios-slider"></span>
+                      </label>
+                    </div>
+
+                    <div class="feature-card-inline-box" id="inlineImageModelBox">
+                      <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <label style="margin:0;font-size:12px;color:var(--text-primary);">🎨 当前绑定生图模型（解决中转站无 dall-e-3 报错，可在线拉取选择）：</label>
+                        <button type="button" id="btnInlineFetchImageModels" class="apple-btn apple-btn-accent" style="padding:4px 10px;font-size:11px;">
+                          <span>🔄 在线拉取中转站生图模型列表</span>
+                        </button>
+                      </div>
+
+                      <div id="inlineImageSelectArea" class="fetched-dropdown-banner hidden">
+                        <label id="lblInlineImageFetched">✓ 已识别中转站生图模型（下拉即刻切换）：</label>
+                        <select id="inlineImageModelSelect"></select>
+                      </div>
+
+                      <div class="preset-pills-row">
+                        <button type="button" class="quick-model-tag btn-quick-img-model" data-model="gpt-image-2">⚡ gpt-image-2 (中转首选)</button>
+                        <button type="button" class="quick-model-tag btn-quick-img-model" data-model="gpt-image-1">⚡ gpt-image-1</button>
+                        <button type="button" class="quick-model-tag btn-quick-img-model" data-model="dall-e-3">🎨 dall-e-3</button>
+                        <button type="button" class="quick-model-tag btn-quick-img-model" data-model="gpt-4o-image">🖼 gpt-4o-image</button>
+                        <button type="button" class="quick-model-tag btn-quick-img-model" data-model="flux-pro">✨ flux-pro</button>
+                        <button type="button" class="quick-model-tag btn-quick-img-model" data-model="black-forest-labs/FLUX.1-schnell">🚀 FLUX.1-schnell</button>
+                        <button type="button" class="quick-model-tag btn-quick-img-model" data-model="Kwai-Kolors/Kolors">🌈 Kolors</button>
+                      </div>
+                      <input type="text" id="inputInlineImageModel" value="gpt-image-1" placeholder="填入中转站支持的生图模型名称，如 gpt-image-1, dall-e-3, flux-pro">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-cell wizard-cell-full">
+                  <label>Codex 通信协议格式 (Wire API Protocol)</label>
+                  <div class="wizard-mode-grid">
+                    <div class="wizard-mode-card active" id="cardWireResponses">
+                      <h5>🌟 Responses API 协议 (Codex 官方原生格式 · 推荐)</h5>
+                      <p>支持完整流式事件与原生多模态交互，中转站及 OpenAI 原生首选</p>
+                    </div>
+                    <div class="wizard-mode-card" id="cardWireChat">
+                      <h5>⚡️ Chat Completions 协议 (通用兼容格式)</h5>
+                      <p>适用于仅支持 /v1/chat/completions 的旧版中继或纯 DeepSeek 官方接口</p>
+                    </div>
+                  </div>
+                  <input type="hidden" id="inputCodexWireApi" value="responses">
+                </div>
+              </div>
+
+              <div class="card-footer-actions">
+                <span id="probeResultText" style="font-size:12px;color:var(--text-muted);">修改后请点击右侧保存并同步至 Codex</span>
+                <div style="display:flex;gap:10px;">
+                  <button type="button" id="btnSaveCodexConfig" class="apple-btn apple-btn-secondary">💾 保存此渠道</button>
+                  <button type="button" id="btnSaveAndApplyCodex" class="apple-btn apple-btn-primary">🚀 保存并同步至 Codex</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PANEL B: OFFICIAL CODEX ACCOUNT + GLOBAL IMAGE2 SKILL BRIDGE -->
+          <div id="panelCatOfficial" class="hidden">
+            <div class="apple-card">
+              <div class="card-header-clean">
+                <div>
+                  <h4>🔐 Codex 官方客户端原生登录 + 本地视觉 Skill 桥接模式</h4>
+                  <p style="font-size:12px;color:var(--text-muted);margin-top:2px;">
+                    保留 Codex 桌面客户端自带账号（如 6.1 Sol 轻度），向 <code>%USERPROFILE%\.codex\skills\image2</code> 注入全局生图插件。
+                  </p>
+                </div>
+                <span id="badgeSkillBridgeStatus" class="badge-green">全局 Skill 已挂载</span>
+              </div>
+
+              <div class="apple-form-grid mt-12">
+                <div class="form-cell">
+                  <label>官方推理强度预设 (Reasoning Effort)</label>
+                  <select id="selectOfficialEffort">
+                    <option value="low">轻度推理 (low · 响应最快)</option>
+                    <option value="medium" selected>标准推理 (medium · 均衡推荐)</option>
+                    <option value="high">深度推理 (high · 复杂架构)</option>
+                  </select>
+                </div>
+
+                <div class="form-cell">
+                  <label>全局生图插件挂载路径 (%CODEX_HOME%\skills\image2)</label>
+                  <input type="text" id="inputOfficialSkillDir" readonly value="~/.codex/skills/image2">
+                </div>
+              </div>
+
+              <div class="card-footer-actions">
+                <span style="font-size:12px;color:var(--text-muted);">挂载后在 Codex 客户端新开聊天即可直接发送「生成一张...」</span>
+                <button type="button" id="btnInstallSkillBridge" class="apple-btn apple-btn-primary">
+                  <span>🔌 一键注入/更新全局 Image2 视觉插件并应用</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- PANEL C: LOCAL OLLAMA / LM STUDIO ENGINE -->
+          <div id="panelCatLocal" class="hidden">
+            <div class="apple-card">
+              <div class="card-header-clean">
+                <div>
+                  <h4>💻 本地算力免 Key 直连 (Ollama / LM Studio / vLLM)</h4>
+                  <p style="font-size:12px;color:var(--text-muted);margin-top:2px;">
+                    直接连接本机运行的开源代码大模型，无需填写任何 API Key。
+                  </p>
+                </div>
+                <div style="display:flex;gap:6px;">
+                  <button type="button" class="preset-pill btn-local-port" data-url="http://127.0.0.1:11434/v1">Ollama (11434)</button>
+                  <button type="button" class="preset-pill btn-local-port" data-url="http://127.0.0.1:1234/v1">LM Studio (1234)</button>
+                </div>
+              </div>
+
+              <div class="apple-form-grid mt-12">
+                <div class="form-cell">
+                  <label>本机推理服务地址</label>
+                  <input type="text" id="inputLocalBaseUrl" value="http://127.0.0.1:11434/v1">
+                </div>
+
+                <div class="form-cell">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+                    <label style="margin:0;">本机模型标识</label>
+                    <button type="button" id="btnScanLocalModels" class="quick-model-tag">🔍 扫描本机已安装模型</button>
+                  </div>
+                  <input type="text" id="inputLocalModel" value="qwen2.5-coder:14b" placeholder="例如：qwen2.5-coder:14b, deepseek-r1:14b">
+                </div>
+              </div>
+
+              <div class="card-footer-actions">
+                <span style="font-size:12px;color:var(--text-muted);">生图功能仍会调用你配置的视觉生图引擎</span>
+                <button type="button" id="btnApplyLocalLlm" class="apple-btn apple-btn-primary">
+                  <span>🚀 激活本地算力并同步至 Codex</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- REAL-TIME GATEWAY CAPTURE MONITOR -->
+          <div class="live-monitor-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <h4 style="font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;">
+                  <span class="live-dot"></span>
+                  <span>实时网关与 Skill 消息捕捉监控台 (Live Capture Monitor)</span>
+                </h4>
+                <p style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">
+                  当你在 Codex 客户端发送消息或触发画图时，此处会实时闪现捕捉到的消息与生图自愈状态，并弹出顶部灵动岛通知
+                </p>
+              </div>
+              <div style="display:flex;gap:8px;">
+                <button type="button" id="btnTestGatewayCapture" class="apple-btn apple-btn-secondary" style="padding:5px 12px;font-size:11.5px;">
+                  <span>📡 发送模拟捕捉测试</span>
+                </button>
+                <button type="button" id="btnClearEvents" class="apple-btn apple-btn-secondary" style="padding:5px 10px;font-size:11.5px;">
+                  <span>清空记录</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="live-events-list" id="liveEventsList"></div>
+          </div>
+        </section>
+
+        <!-- TAB 2: DUAL ENGINE INTERCEPTION CENTER -->
+        <section id="tab-dual-engine" class="tab-pane">
+          <div class="dual-engine-cards">
+            <div class="engine-card">
+              <div class="engine-card-top">
+                <div class="engine-icon squircle-blue">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                </div>
+                <div class="engine-header-info">
+                  <h3>方案一：自然语言生图意图智能捕捉</h3>
+                  <span class="engine-badge-tag">支持直接说「生成一张20世纪春节全家福」</span>
+                </div>
+                <label class="ios-switch">
+                  <input type="checkbox" id="chkToggleMode1" checked>
+                  <span class="ios-slider"></span>
+                </label>
+              </div>
+              <div class="engine-desc-body">
+                <p>内置高精度语义识别器 + 全局 <code>image2</code> Skill 双保险：</p>
+                <ul>
+                  <li><strong>自然语言直接画图</strong>：在 Codex 中直接输入「生成一张中国20世纪过年的全家福」，网关自动识别生图意图并调用视觉模型生成图片。</li>
+                  <li><strong>看图写代码 0 误判</strong>：包含「代码/组件/React/报错/参考这张图」等编程词汇时 100% 透传给编程大模型。</li>
+                </ul>
+              </div>
+              <div class="engine-meta-bar">
+                <span>支持协议：Responses API + Chat API + Skill</span>
+                <span>看图写代码误判率：0%</span>
+              </div>
+            </div>
+
+            <div class="engine-card">
+              <div class="engine-card-top">
+                <div class="engine-icon squircle-indigo">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                </div>
+                <div class="engine-header-info">
+                  <h3>方案二：/img 与 /draw 显式指令直达</h3>
+                  <span class="engine-badge-tag">0 对话 Token 消耗 · 100% 确定性</span>
+                </div>
+                <label class="ios-switch">
+                  <input type="checkbox" id="chkToggleMode2" checked>
+                  <span class="ios-slider"></span>
+                </label>
+              </div>
+              <div class="engine-desc-body">
+                <p>在 Codex 中输入以 <code>/img</code>、<code>/draw</code> 或 <code>画图：</code> 开头的内容时：</p>
+                <ul>
+                  <li><strong>0 Token 开销</strong>：不经过对话大模型，本地网关 0ms 截获并直接调用生图 API。</li>
+                  <li><strong>模型不可用自动探测自愈</strong>：若当前生图模型不在你的中转站分组内，系统会自动拉取该中转站的模型列表寻找可用生图模型重试。</li>
+                </ul>
+              </div>
+              <div class="engine-meta-bar">
+                <span>额外对话 Token：0</span>
+                <span>响应延迟：＜ 5ms 本地截获</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="apple-card mt-16">
+            <div class="card-header-clean">
+              <h4>网关路由沙盒演练台 (实时测试你的句子会被如何处理)</h4>
+              <span class="section-hint">支持 Dry-Run 实测网关捕获响应</span>
+            </div>
+            <div class="simulator-box">
+              <div class="simulator-input-row">
+                <input type="text" id="simInputPrompt" value="生成一张中国20世纪过年的全家福">
+                <button id="btnRunSim" class="apple-btn apple-btn-primary">测试路由判定并触发捕捉提示</button>
+              </div>
+              <div class="sim-result-card">
+                <div class="sim-status-chip" id="simStatusChip">🧠 命中方案一 (自然语言生图意图拦截)</div>
+                <div class="sim-flow-text" id="simFlowText">点击右侧按钮可真实验证网关捕获消息并弹出灵动岛提示。</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 3: CREATIVE CANVAS -->
+        <section id="tab-creative-canvas" class="tab-pane">
+          <div class="creative-workspace">
+            <div class="creative-canvas-stage" id="canvasStage">
+              <div class="canvas-empty-state" id="canvasEmptyState">
+                <div class="empty-icon-ring">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                </div>
+                <h3>AI 视觉创作工坊</h3>
+                <p>直接在此测试你的生图 API 是否可用，生成的作品将自动保存在本地 outputs/ 目录</p>
+                <div class="inspirational-tags">
+                  <button class="inspire-chip" data-prompt="中国20世纪80年代春节全家福，暖色调怀旧胶片质感，大红灯笼，搪瓷杯，温馨喜庆">🏮 20世纪春节全家福</button>
+                  <button class="inspire-chip" data-prompt="极简主义雪山日出，柔和日光，4K桌面壁纸">🏔️ 极简雪山日出</button>
+                  <button class="inspire-chip" data-prompt="未来赛博朋克霓虹街道，雨夜积水倒影，电影感光影">🌆 赛博朋克雨夜</button>
+                  <button class="inspire-chip" data-prompt="苹果风格极简玻璃拟态 UI 图标，发光粒子，半透明质感"> 玻璃拟态图标</button>
+                </div>
+              </div>
+
+              <div class="canvas-generating-state hidden" id="canvasGeneratingState">
+                <div class="apple-spinner-ring"></div>
+                <h4 id="genProgressTitle">正在调用生图引擎渲染画面...</h4>
+                <p id="genProgressSub">若默认模型不可用，系统将自动探测中转站可用生图模型重试</p>
+              </div>
+
+              <div class="canvas-result-view hidden" id="canvasResultView">
+                <img id="imgResultPreview" src="" alt="Generated artwork">
+                <div class="canvas-floating-actions">
+                  <button type="button" id="btnRevealCanvasResult" class="glass-action-btn" style="background:rgba(0,113,227,0.45);border:1px solid rgba(0,113,227,0.7);font-weight:600;" title="在 Windows 文件管理器中定位并选中此照片">📂 打开文件位置</button>
+                  <button type="button" id="btnCopyCanvasImage" class="glass-action-btn" title="直接复制图片到系统剪贴板 (可 Ctrl+V 粘贴到微信/B站/文档)">🖼️ 复制图片</button>
+                  <button type="button" id="btnCopyResultPrompt" class="glass-action-btn">📋 复制提示词</button>
+                  <button type="button" id="btnDownloadResult" class="glass-action-btn">⬇️ 下载原图</button>
+                  <button type="button" id="btnReuseAsRef" class="glass-action-btn">🎨 设为参考图继续改图</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="floating-command-bar">
+              <div class="ref-pills-strip hidden" id="refPillsStrip"></div>
+              <div class="command-bar-inner">
+                <button type="button" id="btnAttachRef" class="cmd-icon-btn" title="添加本地参考图">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                </button>
+                <input type="file" id="fileRefInput" accept="image/*" multiple class="hidden-input">
+                <textarea id="creativePromptInput" rows="1" placeholder="输入画面描述直接测试生图（如：生成一张中国20世纪过年的全家福）..."></textarea>
+                <div class="ratio-capsule-picker">
+                  <button type="button" class="ratio-pill active" data-size="1024x1024">1:1</button>
+                  <button type="button" class="ratio-pill" data-size="1792x1024">16:9</button>
+                  <button type="button" class="ratio-pill" data-size="1024x1792">9:16</button>
+                </div>
+                <button type="button" id="btnExecuteCreative" class="cmd-submit-btn">
+                  <span id="btnExecuteText">立即生成</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 4: GALLERY -->
+        <section id="tab-gallery" class="tab-pane">
+          <div class="gallery-action-bar">
+            <div>
+              <h3>本地创作画廊</h3>
+              <span class="section-hint" id="galleryTotalCount">0 件作品</span>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button type="button" id="btnOpenOutputsFolder" class="apple-btn apple-btn-primary" style="font-weight:600;" title="在 Windows 文件资源管理器中打开 outputs 图片目录">📂 打开图片存储目录</button>
+              <button type="button" id="btnRefreshGallery" class="apple-btn apple-btn-secondary">🔄 刷新画廊</button>
+              <button type="button" id="btnClearGalleryHistory" class="apple-btn apple-btn-danger">🗑️ 清空所有历史作品</button>
+            </div>
+          </div>
+          <div class="gallery-masonry" id="galleryGrid"></div>
+        </section>
+
+        <!-- TAB 5: IMAGE ENGINE SETTINGS (WITH ONLINE FETCH!) & STORAGE CLEANUP -->
+        <section id="tab-settings" class="tab-pane">
+          <!-- Image Generation Engine Settings (Moved to Top for Instant Access!) -->
+          <div class="settings-group">
+            <h4 class="settings-group-title">🎨 视觉生图引擎详细配置 (支持从中转站在线拉取生图模型列表自动选取)</h4>
+            <div class="apple-card">
+              <div class="card-header-clean">
+                <div>
+                  <h4>当前活跃生图引擎</h4>
+                  <p style="font-size:12px;color:var(--text-muted);">若开启了「一 Key 双用」，生图引擎会自动继承你当前中转站的 API Key 与接口地址</p>
+                </div>
+                <select id="selectActiveImageProvider" class="apple-btn apple-btn-secondary"></select>
+              </div>
+
+              <div class="apple-form-grid mt-12">
+                <div class="form-cell">
+                  <label>生图专用 API Key（留空或保持掩码则自动复用中转站 Key）</label>
+                  <div class="input-with-action">
+                    <input type="password" id="inputImageApiKey" placeholder="sk-...">
+                    <button type="button" class="btn-toggle-visibility" id="btnToggleImageKeyVis">👁</button>
+                  </div>
+                </div>
+
+                <div class="form-cell">
+                  <label>生图接口 Base URL（通常与中转站一致，含 /v1）</label>
+                  <input type="text" id="inputImageBaseUrl" placeholder="https://euzhi.vip/v1">
+                </div>
+
+                <!-- NEW: Online Fetch Models for Image Generation Engine! -->
+                <div class="form-cell wizard-cell-full">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                    <label style="margin:0;">🎨 生图模型名称（点击右侧按钮从你的中转站在线拉取模型列表自动选取）</label>
+                    <button type="button" id="btnImageTabFetchModels" class="apple-btn apple-btn-accent" style="padding:5px 12px;font-size:11.5px;">
+                      <span>🔄 在线拉取中转站生图模型列表</span>
+                    </button>
+                  </div>
+
+                  <div id="imageTabSelectArea" class="fetched-dropdown-banner hidden">
+                    <label id="lblImageTabFetchedCount">✓ 已从中转站获取可用模型列表（优先置顶生图模型，点击下拉即刻选取）：</label>
+                    <select id="imageTabModelSelect"></select>
+                  </div>
+
+                  <div class="preset-pills-row">
+                    <button type="button" class="preset-pill btn-imgtab-preset" data-model="gpt-image-2">⚡ gpt-image-2 (中转首选)</button>
+                    <button type="button" class="preset-pill btn-imgtab-preset" data-model="gpt-image-1">⚡ gpt-image-1</button>
+                    <button type="button" class="preset-pill btn-imgtab-preset" data-model="dall-e-3">🎨 dall-e-3</button>
+                    <button type="button" class="preset-pill btn-imgtab-preset" data-model="gpt-4o-image">🖼 gpt-4o-image</button>
+                    <button type="button" class="preset-pill btn-imgtab-preset" data-model="flux-pro">✨ flux-pro</button>
+                    <button type="button" class="preset-pill btn-imgtab-preset" data-model="black-forest-labs/FLUX.1-schnell">🚀 FLUX.1-schnell</button>
+                    <button type="button" class="preset-pill btn-imgtab-preset" data-model="Kwai-Kolors/Kolors">🌈 Kolors</button>
+                  </div>
+                  <input type="text" id="inputImageModel" placeholder="例如: gpt-image-1, dall-e-3, flux-pro">
+                </div>
+
+                <div class="form-cell wizard-cell-full">
+                  <label>文生图请求路径 (Generation Path · 默认为标准 /images/generations)</label>
+                  <input type="text" id="inputImageGenPath" placeholder="/images/generations">
+                </div>
+              </div>
+
+              <div class="card-footer-actions">
+                <span style="font-size:12px;color:var(--text-muted);">提示：若所选模型在中转站不可用，系统会在生图时自动探测该中转站可用生图模型并切换</span>
+                <button id="btnSaveImageSettings" class="apple-btn apple-btn-primary">💾 保存生图引擎配置</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Local Storage Locations & One-Click Cleanup -->
+          <div class="settings-group mt-20">
+            <h4 class="settings-group-title">📦 本地信息存储位置与一键清理中心 (Data & Storage Management)</h4>
+            <div class="apple-card">
+              <div class="card-header-clean">
+                <div>
+                  <h4>所有本地文件物理存储路径明细</h4>
+                  <p style="font-size:12px;color:var(--text-muted);">你的所有配置与密钥均 100% 存储在你本机以下路径中，随时可一键彻底清理</p>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  <button type="button" id="btnExportDesensitizedConfig" class="apple-btn apple-btn-secondary" title="导出不含 API Key 的安全渠道预设 JSON，方便分享给朋友或社区">📤 导出脱敏配置预设</button>
+                  <button type="button" id="btnImportConfigBtn" class="apple-btn apple-btn-secondary" title="从 JSON 文件导入渠道预设">📥 导入配置预设</button>
+                  <input type="file" id="fileImportConfigInput" accept=".json,application/json" class="hidden-input">
+                  <button type="button" id="btnResetSavedConfig" class="apple-btn apple-btn-danger">🧹 清空保存的密钥与配置</button>
+                  <button type="button" id="btnRestoreCodexToml" class="apple-btn apple-btn-secondary">🔄 还原 Codex 原始配置</button>
+                </div>
+              </div>
+
+              <div class="info-row">
+                <span class="info-label">1. 本机渠道与 API 密钥配置文件 (config.json)</span>
+                <span class="info-value" style="display:flex;align-items:center;gap:8px;">
+                  <span id="lblStorageConfigFile">加载中...</span>
+                  <button type="button" id="btnOpenConfigDirSettings" class="apple-btn apple-btn-secondary" style="padding:2px 8px;font-size:11px;">📂 打开位置</button>
+                </span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">2. 生成图片与历史记录目录 (outputs/)</span>
+                <span class="info-value" style="display:flex;align-items:center;gap:8px;">
+                  <span id="lblStorageOutputsDir">加载中...</span>
+                  <button type="button" id="btnOpenOutputsFolderSettings" class="apple-btn apple-btn-secondary" style="padding:2px 8px;font-size:11px;">📂 打开文件夹</button>
+                </span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">3. Codex 全局路由配置文件 (config.toml)</span>
+                <span class="info-value" style="display:flex;align-items:center;gap:8px;">
+                  <span id="lblStorageCodexToml">加载中...</span>
+                  <button type="button" id="btnOpenCodexHomeSettings" class="apple-btn apple-btn-secondary" style="padding:2px 8px;font-size:11px;">📂 打开位置</button>
+                </span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">4. Codex 全局视觉插件目录 (skills/image2)</span>
+                <span class="info-value" style="display:flex;align-items:center;gap:8px;">
+                  <span id="lblStorageSkillDir">加载中...</span>
+                  <button type="button" id="btnOpenSkillDirSettings" class="apple-btn apple-btn-secondary" style="padding:2px 8px;font-size:11px;">📂 打开目录</button>
+                </span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">5. 新手教学向导状态重置</span>
+                <span class="info-value">
+                  <button type="button" id="btnResetBrowserLocal" class="quick-model-tag">点击立即重新弹出新手教学向导</button>
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- INTERACTIVE 3-STEP ONBOARDING TUTORIAL WIZARD (Guaranteed First-Run Popup!) -->
+  <div id="onboardingModal" class="apple-modal-onboarding hidden">
+    <div class="onboarding-overlay" id="onboardingOverlay"></div>
+    <div class="onboarding-dialog">
+      <div class="onboarding-header">
+        <div class="onboarding-header-left">
+          <div class="onboarding-logo"></div>
+          <div>
+            <h3 style="font-size:17.5px;font-weight:700;">欢迎使用 Codex Studio · 新手教学与快速配置向导</h3>
+            <p style="font-size:12px;color:var(--text-muted);">首次启动自动弹出 · 支持从中转站直接拉取【编程 + 生图】双模型列表自动选取</p>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button type="button" id="btnWizCleanSavedData" class="apple-btn apple-btn-danger" style="padding:5px 11px;font-size:11.5px;">
+            <span>🧹 清空已保存内容</span>
+          </button>
+          <button type="button" class="onboarding-close-btn" id="btnCloseOnboarding">×</button>
+        </div>
+      </div>
+
+      <!-- Interactive Stepper Bar -->
+      <div class="wizard-stepper-bar">
+        <div class="wizard-step-pill active" data-wstep="1">
+          <span class="step-num">1</span>
+          <span>第一步：中转站与双模型拉取</span>
+        </div>
+        <div class="wizard-step-pill" data-wstep="2">
+          <span class="step-num">2</span>
+          <span>第二步：了解双引擎画图指令</span>
+        </div>
+        <div class="wizard-step-pill" data-wstep="3">
+          <span class="step-num">3</span>
+          <span>第三步：一键激活与存储说明</span>
+        </div>
+      </div>
+
+      <!-- Step 1: Relay & Dual Model Online Fetch -->
+      <div class="wizard-step-section" id="wizSection1">
+        <div class="wizard-step-title">
+          <div class="wizard-step-left">
+            <span class="step-num">1</span>
+            <span>填入中转站地址与令牌，点击「🔄 一键拉取模型列表」直接下拉选取</span>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button type="button" class="quick-model-tag wiz-preset-btn" data-url="https://euzhi.vip/v1" data-model="gpt-4o">Euzhi中转</button>
+            <button type="button" class="quick-model-tag wiz-preset-btn" data-url="https://api.openai-proxy.org/v1" data-model="gpt-4o">标准中转</button>
+            <button type="button" class="quick-model-tag wiz-preset-btn" data-url="https://api.deepseek.com/v1" data-model="deepseek-chat">DeepSeek</button>
+          </div>
+        </div>
+
+        <div class="wizard-card">
+          <div class="wizard-form-grid">
+            <div class="wizard-cell">
+              <label>中转站接口地址 (Base URL · 需以 /v1 结尾)</label>
+              <input type="text" id="wizBaseUrl" placeholder="https://euzhi.vip/v1" value="https://euzhi.vip/v1">
+            </div>
+            <div class="wizard-cell">
+              <label>API Key / 令牌 (sk-...)</label>
+              <div class="input-with-action">
+                <input type="password" id="wizApiKey" placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx">
+                <button type="button" class="btn-toggle-visibility" id="btnToggleWizKeyVis">👁</button>
+              </div>
+            </div>
+
+            <div class="wizard-cell wizard-cell-full" style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,113,227,0.08);padding:8px 12px;border-radius:10px;border:1px solid rgba(0,113,227,0.25);">
+              <span style="font-size:12px;font-weight:600;color:var(--text-primary);">📡 填好上方地址与 Key 后，点此同时拉取该中转站的【编程模型】与【生图模型】：</span>
+              <button type="button" id="btnWizFetchModels" class="apple-btn apple-btn-primary" style="padding:5px 14px;font-size:12px;">
+                <span>🔄 一键拉取中转站模型列表</span>
+              </button>
+            </div>
+
+            <div class="wizard-cell">
+              <label>💻 编程主力模型（拉取后可下拉选取或手填）</label>
+              <select id="wizModelSelect" class="hidden" style="margin-bottom:6px;"></select>
+              <input type="text" id="wizModel" value="gpt-4o" placeholder="例如: gpt-4o, gpt-6.1-sol">
+            </div>
+
+            <div class="wizard-cell">
+              <label>🎨 视觉生图模型（拉取后自动置顶生图模型供选取）</label>
+              <select id="wizImageModelSelect" class="hidden" style="margin-bottom:6px;"></select>
+              <input type="text" id="wizImageModel" value="gpt-image-1" placeholder="例如: gpt-image-1, dall-e-3, flux-pro">
+            </div>
+
+            <div class="wizard-cell wizard-cell-full">
+              <div class="apple-toggle-feature-card" style="padding:10px 14px;">
+                <div class="feature-card-top-row">
+                  <div class="feature-card-info">
+                    <div class="feature-card-icon squircle-pink">🎨</div>
+                    <div class="feature-card-texts">
+                      <h5>一 Key 双用 · 自动将此中转站 Key 与地址同步绑定至生图引擎</h5>
+                      <p>填一次即可同时驱动 Codex 编程与画图，且当某生图模型不可用时自动探测备用生图模型</p>
+                    </div>
+                  </div>
+                  <label class="ios-switch">
+                    <input type="checkbox" id="chkWizSyncImage" checked>
+                    <span class="ios-slider"></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Visual Interception Tutorial -->
+      <div class="wizard-step-section" id="wizSection2">
+        <div class="wizard-step-title">
+          <div class="wizard-step-left">
+            <span class="step-num">2</span>
+            <span>新手必读：如何在 Codex 中直接画图 vs 看图写代码？</span>
+          </div>
+        </div>
+        <div class="tutorial-showcase-grid">
+          <div class="tutorial-cmd-card">
+            <strong>🎨 方式 A：自然语言直接画图（方案一）</strong>
+            <p style="font-size:11px;color:#A1A1A6;margin-top:2px;">在 Codex 中直接发送画图需求，网关自动截获并生成：</p>
+            <code>生成一张中国20世纪过年的全家福</code>
+          </div>
+          <div class="tutorial-cmd-card">
+            <strong>⚡ 方式 B：/img 或 /draw 指令直达（方案二）</strong>
+            <p style="font-size:11px;color:#A1A1A6;margin-top:2px;">0 对话 Token 消耗，毫秒级本地直接调拨生图 API：</p>
+            <code>/draw 赛博朋克雨夜霓虹街道，16:9</code>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: One-Click Activate -->
+      <div class="wizard-step-section" id="wizSection3">
+        <div class="wizard-step-title">
+          <div class="wizard-step-left">
+            <span class="step-num">3</span>
+            <span>一键保存并激活 Codex（同时写入网关配置与全局 Image2 视觉插件）</span>
+          </div>
+        </div>
+        <div class="wizard-card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+          <div>
+            <div id="wizApplyStatus" style="font-size:12.5px;font-weight:600;color:var(--text-primary);">点击右侧按钮即可完成全部配置并激活实时捕捉提示</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">
+              本地配置文件：<code>data/config.json</code> · 全局插件：<code>~/.codex/skills/image2</code>
+            </div>
+          </div>
+          <button type="button" id="btnWizApplyCodex" class="apple-btn apple-btn-primary" style="flex-shrink:0;padding:10px 18px;">
+            <span>🚀 一键保存并激活 Codex</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="onboarding-footer">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);cursor:pointer;">
+          <input type="checkbox" id="chkDontShowAgain" checked>
+          <span>完成配置后不再自动弹出（随时可点击顶部「💡 新手教学向导」重新打开）</span>
+        </label>
+        <button type="button" id="btnFinishOnboarding" class="apple-btn apple-btn-secondary">
+          <span>完成教学 · 进入主工作台</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fullscreen Lightbox Modal -->
+  <div id="imageLightbox" class="apple-modal-lightbox hidden">
+    <div class="lightbox-overlay" id="lightboxOverlay"></div>
+    <div class="lightbox-dialog">
+      <button class="lightbox-close-btn" id="btnLightboxClose">×</button>
+      <div class="lightbox-image-wrap">
+        <img id="lightboxImg" src="" alt="Full preview">
+      </div>
+      <div class="lightbox-meta" style="padding:16px 20px;display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+          <p id="lightboxPrompt" style="font-size:13.5px;font-weight:500;color:var(--text-primary);flex:1;"></p>
+          <div style="display:flex;gap:8px;flex-shrink:0;">
+            <button type="button" id="btnLightboxReveal" class="apple-btn apple-btn-primary" style="padding:8px 14px;font-weight:600;" title="一键在文件管理器中定位并高亮显示此照片">📂 打开文件位置</button>
+            <button type="button" id="btnLightboxCopyImage" class="apple-btn apple-btn-secondary" title="复制原图到系统剪贴板">🖼️ 复制图片</button>
+            <button type="button" id="btnLightboxCopy" class="apple-btn apple-btn-secondary">📋 复制 Prompt</button>
+            <button type="button" id="btnLightboxDownload" class="apple-btn apple-btn-secondary">下载原图</button>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text-muted);border-top:1px solid var(--border-subtle);padding-top:6px;">
+          <span id="lightboxFileLocation" style="font-family:ui-monospace,Menlo,monospace;word-break:break-all;"></span>
+          <span id="lightboxModelInfo"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+/**
+ * Codex Studio v2.5.0 - Apple HIG Frontend Controller
+ * Features:
+ *  - Online Model Fetching & Categorized Dropdowns for BOTH Coding & Image Generation Engine
+ *  - Guaranteed First-Time Onboarding Tutorial Popup (driven by backend data/config.json)
+ *  - Real-Time Request Capture Polling & Dynamic Island Toast
+ */
+
+const state = {
+  currentTab: 'tab-codex-hub',
+  connectionCategory: 'relay_api',
+  theme: localStorage.getItem('codex_theme') || 'apple-dark',
+  codexProviders: [],
+  imageProviders: [],
+  activeCodex: '',
+  activeImage: '',
+  activeImageModel: 'gpt-image-1',
+  syncImageKey: true,
+  routingMode: 'gateway',
+  mode1_llm_tool: true,
+  mode2_prefix_direct: true,
+  selectedSize: '1024x1024',
+  refImages: [],
+  history: [],
+  lastSeenEventSeq: -1,
+  onboardingChecked: false
+};
+
+const $ = id => document.getElementById(id);
+const $$ = sel => document.querySelectorAll(sel);
+
+const LOCAL_SERVICE_TOKEN = document.querySelector('meta[name="image2-local-token"]')?.content ||
+                            'AguLw4mZOaKQiKkm5I8V-K8545Dao7LysiUr-2edpqg';
+
+function showToast(msg, icon = '', duration = 3600) {
+  const b = $('noticeBanner');
+  $('noticeIcon').textContent = icon;
+  $('noticeMessage').textContent = msg;
+  b.classList.remove('hidden');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => b.classList.add('hidden'), duration);
+}
+
+async function api(path, options = {}) {
+  try {
+    const res = await fetch(path, {
+      ...options,
+      headers: {
+        'Accept': 'application/json',
+        'X-Image2-Local-Token': LOCAL_SERVICE_TOKEN,
+        ...(options.headers || {})
+      }
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || data.detail || `HTTP ${res.status}`);
+    return data;
+  } catch (err) {
+    showToast(err.message, '⚠️');
+    throw err;
+  }
+}
+
+async function initApp() {
+  applyTheme(state.theme);
+  setupNavigation();
+  setupSystemControls();
+  setupCodexHub();
+  setupDualEngine();
+  setupCreativeCanvas();
+  setupGallery();
+  setupSettingsAndStorage();
+  setupOnboardingModal();
+
+  await refreshAll();
+  setInterval(pollLiveGatewayActivity, 4000);
+}
+
+function applyTheme(t) {
+  state.theme = t;
+  document.body.className = t;
+  localStorage.setItem('codex_theme', t);
+}
+
+function toggleTheme() {
+  applyTheme(state.theme === 'apple-light' ? 'apple-dark' : 'apple-light');
+  showToast(state.theme === 'apple-dark' ? '已切换至深色外观' : '已切换至浅色外观', '🎨');
+}
+
+async function refreshAll() {
+  await Promise.all([loadCodexInfo(), loadProviders(), loadStorageInfo(), loadGallery()]);
+}
+
+// ==============================================================================
+// Unified Helper: Populate Categorized Select Dropdown (Coding vs Image Models)
+// ==============================================================================
+function populateCategorizedModelSelect(selectEl, models, imageModels, currentVal, isImagePurpose = false) {
+  if (!selectEl) return;
+  selectEl.innerHTML = '';
+
+  const imgSet = new Set(imageModels || []);
+  const otherModels = (models || []).filter(m => !imgSet.has(m));
+
+  if (isImagePurpose) {
+    if (imageModels && imageModels.length > 0) {
+      const grpImg = document.createElement('optgroup');
+      grpImg.label = `🎨 识别到的视觉生图模型 (${imageModels.length} 个 · 推荐选择)`;
+      imageModels.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.textContent = `🎨 ${m}`;
+        if (m === currentVal) opt.selected = true;
+        grpImg.appendChild(opt);
+      });
+      selectEl.appendChild(grpImg);
+    }
+    if (otherModels.length > 0) {
+      const grpAll = document.createElement('optgroup');
+      grpAll.label = `📦 该中转站其他可用模型 (${otherModels.length} 个)`;
+      otherModels.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.textContent = m;
+        if (m === currentVal) opt.selected = true;
+        grpAll.appendChild(opt);
+      });
+      selectEl.appendChild(grpAll);
+    }
+  } else {
+    (models || []).forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = imgSet.has(m) ? `🎨 ${m} (生图)` : `💻 ${m}`;
+      if (m === currentVal) opt.selected = true;
+      selectEl.appendChild(opt);
+    });
+  }
+}
+
+async function fetchModelsForTarget({ baseUrl, apiKey, purpose = 'all', selectEl, areaEl, labelEl, inputEl, secondSelectEl, secondInputEl }) {
+  showToast('正在连接中转站拉取可用模型列表...', '🔄');
+  try {
+    const res = await api('/api/models/fetch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: purpose === 'image' ? state.activeImage : state.activeCodex,
+        purpose,
+        base_url: baseUrl,
+        api_key: apiKey
+      })
+    });
+
+    const models = res.models || [];
+    const imageModels = res.image_models || [];
+
+    if (models.length > 0) {
+      if (selectEl && inputEl) {
+        populateCategorizedModelSelect(selectEl, models, imageModels, inputEl.value, purpose === 'image');
+        selectEl.classList.remove('hidden');
+        if (areaEl) areaEl.classList.remove('hidden');
+        if (labelEl) {
+          labelEl.textContent = purpose === 'image'
+            ? `✓ 已获取 ${ imageModels.length } 个推荐生图模型与全量模型列表（点击下拉直接选取）：`
+            : `✓ 已从中转站获取 ${ models.length } 个可用模型（点击下拉直接选取）：`;
+        }
+        // Automatically select the first recommended image model if purpose is image and current model is not in list
+        if (purpose === 'image' && imageModels.length > 0 && !imageModels.includes(inputEl.value)) {
+          inputEl.value = imageModels[0];
+          selectEl.value = imageModels[0];
+        }
+        selectEl.onchange = () => {
+          inputEl.value = selectEl.value;
+          showToast(`已选取模型：${selectEl.value}`, '⚡️');
+        };
+      }
+
+      // If a secondary image model select was passed (e.g. in Onboarding Wizard or Main Hub)
+      if (secondSelectEl && secondInputEl) {
+        populateCategorizedModelSelect(secondSelectEl, models, imageModels, secondInputEl.value, true);
+        secondSelectEl.classList.remove('hidden');
+        if (imageModels.length > 0) {
+          secondInputEl.value = imageModels[0];
+          secondSelectEl.value = imageModels[0];
+        }
+        secondSelectEl.onchange = () => {
+          secondInputEl.value = secondSelectEl.value;
+          showToast(`已选定生图模型：${secondSelectEl.value}`, '🎨');
+        };
+      }
+
+      showToast(res.message || `成功获取 ${models.length} 个模型！`, '✨');
+    }
+  } catch (err) {}
+}
+
+// ==============================================================================
+// Real-Time Gateway Capture Polling
+// ==============================================================================
+
+
+// Clipboard Image Copy Helper
+
+async function copyImageToClipboard(imgUrl) {
+  if (!imgUrl) return;
+  try {
+    const res = await fetch(imgUrl);
+    const blob = await res.blob();
+    if (navigator.clipboard && window.ClipboardItem) {
+      await navigator.clipboard.write([new ClipboardItem({ [blob.type || 'image/png']: blob })]);
+      showToast('已复制高清原图到剪贴板，可直接 Ctrl+V 粘贴！', '🖼️');
+    } else {
+      await navigator.clipboard.writeText(window.location.origin + imgUrl);
+      showToast('已复制图片预览链接到剪贴板', '🔗');
+    }
+  } catch (e) {
+    showToast('复制图片失败，请点击下载原图或打开文件位置', '⚠️');
+  }
+}
+
+// File Explorer Reveal & Folder Open Helpers
+async function revealFileInExplorer(filename, filePath) {
+  try {
+    const res = await api('/api/system/reveal-file', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename, path: filePath })
+    });
+    showToast(`已在文件管理器中定位照片：${filename || '当前照片'}`, '📂');
+  } catch (e) {
+    showToast(`无法打开文件管理器: ${e.message}`, '⚠️');
+  }
+}
+
+async function openFolderInExplorer(folderType = 'outputs', customPath = '') {
+  try {
+    const res = await api('/api/system/open-folder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ folder: folderType, path: customPath })
+    });
+    showToast('已在文件管理器中打开图片目录', '📂');
+  } catch (e) {
+    showToast(`无法打开目录: ${e.message}`, '⚠️');
+  }
+}
+
+async function pollLiveGatewayActivity() {
+  try {
+    const h = await fetch('/api/health', {
+      headers: { 'Accept': 'application/json', 'X-Image2-Local-Token': LOCAL_SERVICE_TOKEN }
+    }).then(r => r.json());
+
+    if (h.memory) {
+      $('txtMemHeap').textContent = `${h.memory.heap_used_mb} MB`;
+    }
+
+    const total = h.total_captured || 0;
+    $('sidebarCaptureCounter').textContent = `已捕捉 ${total} 次请求 · 生图: ${h.model || 'gpt-image-1'}`;
+
+    if (h.latest_event) {
+      const evt = h.latest_event;
+      if (state.lastSeenEventSeq === -1) {
+        state.lastSeenEventSeq = evt.seq;
+      } else if (evt.seq > state.lastSeenEventSeq) {
+        state.lastSeenEventSeq = evt.seq;
+        // ONLY popup toasts for INTERCEPTION or IMAGE GENERATION events, NEVER for routine pass-through!
+        const isVisualAction = evt.action.includes('生图') ||
+                               evt.action.includes('画图') ||
+                               evt.action.includes('图像') ||
+                               evt.action.includes('方案一') ||
+                               evt.action.includes('方案二') ||
+                               evt.status === 'processing' ||
+                               evt.status === 'error';
+        if (isVisualAction && !evt.action.includes('透传')) {
+          showToast(`已捕捉 [${evt.source}]：「${evt.message.slice(0, 34)}」 → ${evt.action}`, '📡', 3800);
+        }
+        await refreshLiveEventsList();
+        if (evt.status === 'success' && evt.action.includes('生成成功')) {
+          await loadGallery();
+          await loadProviders();
+        }
+      }
+    }
+  } catch (e) {}
+}
+
+async function refreshLiveEventsList() {
+  try {
+    const res = await fetch('/api/events', {
+      headers: { 'Accept': 'application/json', 'X-Image2-Local-Token': LOCAL_SERVICE_TOKEN }
+    }).then(r => r.json());
+    renderLiveEvents(res.events || []);
+  } catch (e) {}
+}
+
+function renderLiveEvents(events) {
+  const box = $('liveEventsList');
+  if (!box) return;
+  if (!events || events.length === 0) {
+    box.innerHTML = `
+      <div class="live-event-item">
+        <div class="evt-left">
+          <span class="evt-time">--:--:--</span>
+          <span class="evt-source">监听就绪</span>
+          <span class="evt-msg">网关 127.0.0.1:8765 正在等待捕捉 Codex 消息...</span>
+        </div>
+        <span class="evt-action">就绪</span>
+      </div>`;
+    return;
+  }
+
+  box.innerHTML = '';
+  events.slice(0, 12).forEach(ev => {
+    const row = document.createElement('div');
+    row.className = 'live-event-item';
+    const color = ev.status === 'error' ? 'var(--apple-red)' : (ev.status === 'processing' ? 'var(--apple-amber)' : 'var(--apple-green)');
+    row.innerHTML = `
+      <div class="evt-left">
+        <span class="evt-time">${escapeHtml(ev.timestamp)}</span>
+        <span class="evt-source">${escapeHtml(ev.source)}</span>
+        <span class="evt-msg" title="${escapeHtml(ev.message)}">${escapeHtml(ev.message)}</span>
+      </div>
+      <span class="evt-action" style="color:${color}">${escapeHtml(ev.action)}</span>
+    `;
+    box.appendChild(row);
+  });
+}
+
+// 1. Navigation
+function setupNavigation() {
+  $$('.nav-item[data-tab]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      switchTab(btn.getAttribute('data-tab'));
+    });
+  });
+}
+
+function switchTab(tabId) {
+  state.currentTab = tabId;
+  $$('.nav-item[data-tab]').forEach(b => b.classList.toggle('active', b.getAttribute('data-tab') === tabId));
+  $$('.tab-pane').forEach(p => p.classList.toggle('active', p.id === tabId));
+
+  const titleMap = {
+    'tab-codex-hub': { title: 'Codex 接入与渠道中枢', sub: '按分类提供差异化接入 · 支持编程与生图双模型在线拉取与智能容错' },
+    'tab-dual-engine': { title: '双引擎拦截与监控中心', sub: '方案 1 自然语言生图意图识别 + 方案 2 /img 指令直达' },
+    'tab-creative-canvas': { title: 'AI 视觉工坊', sub: '直接在此测试生图 API 或进行多参考图创作' },
+    'tab-gallery': { title: '本地作品画廊', sub: '浏览、下载或复用保存在本地 outputs/ 目录的图像' },
+    'tab-settings': { title: '生图引擎设置与数据清理中心', sub: '在线拉取中转站生图模型列表 · 查看本地存储路径与一键重置' }
+  };
+  const t = titleMap[tabId] || titleMap['tab-codex-hub'];
+  $('mainStageTitle').textContent = t.title;
+  $('mainStageSubtitle').textContent = t.sub;
+
+  if (tabId === 'tab-gallery') loadGallery();
+  if (tabId === 'tab-settings') { loadProviders(); loadStorageInfo(); }
+}
+
+// 2. System Controls
+function setupSystemControls() {
+  const fullShutdown = async () => {
+    if (confirm('确认彻底关闭 Codex Studio 后台服务（释放 8765 端口）并退出窗口吗？')) {
+      try {
+        await api('/api/system/shutdown', { method: 'POST' });
+      } catch (e) {}
+      showToast('后台服务已彻底关闭，正在退出窗口...', '🛑');
+      setTimeout(() => {
+        window.open('', '_self', '');
+        window.close();
+      }, 400);
+    }
+  };
+
+  $('btnShutdownDaemon').addEventListener('click', fullShutdown);
+  $('btnSidebarFullQuit').addEventListener('click', fullShutdown);
+  $('btnHeaderFullQuit').addEventListener('click', fullShutdown);
+  $('btnTriggerGC').addEventListener('click', triggerGC);
+  $('btnQuickGC').addEventListener('click', triggerGC);
+  $('btnToggleTheme').addEventListener('click', toggleTheme);
+}
+
+async function triggerGC() {
+  try {
+    const res = await api('/api/system/gc', { method: 'POST' });
+    if (res.memory) $('txtMemHeap').textContent = `${res.memory.heap_used_mb} MB`;
+    showToast('微内核内存已压缩整理完毕', '✨');
+  } catch (e) {}
+}
+
+// 3. Codex Hub
+function setupCodexHub() {
+  $$('.category-tab-card').forEach(card => {
+    card.addEventListener('click', () => {
+      switchConnectionCategory(card.getAttribute('data-cat'));
+    });
+  });
+
+  $('btnAddNewApiProfile').addEventListener('click', async () => {
+    const count = state.codexProviders.filter(p => p.category !== 'local_llm').length + 1;
+    const newProfile = {
+      id: `codex-relay-${Date.now().toString(36)}`,
+      category: 'relay_api',
+      name: `自定义 API 渠道 #${count}`,
+      base_url: 'https://euzhi.vip/v1',
+      model: 'gpt-4o',
+      wire_api: 'responses',
+      api_key: ''
+    };
+    try {
+      await api('/api/providers/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'codex', provider: newProfile })
+      });
+      showToast(`已新增渠道：${newProfile.name}`, '➕');
+      await loadCodexInfo();
+    } catch (e) {}
+  });
+
+  $('btnDeleteApiProfile').addEventListener('click', async () => {
+    const p = state.codexProviders.find(x => x.id === state.activeCodex);
+    if (!p) return;
+    if (!confirm(`确定删除渠道「${p.name}」吗？`)) return;
+    try {
+      await api('/api/providers/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: p.id })
+      });
+      showToast('已删除该 API 渠道', '🗑️');
+      await loadCodexInfo();
+    } catch (e) {}
+  });
+
+  $('btnProbeApi').addEventListener('click', async () => {
+    $('probeResultText').textContent = '🔄 正在检测中转站连通性与延迟...';
+    $('probeResultText').style.color = 'var(--apple-blue)';
+    try {
+      const res = await api('/api/providers/probe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: state.activeCodex,
+          base_url: $('inputCodexBaseUrl').value.trim(),
+          api_key: $('inputCodexApiKey').value.trim()
+        })
+      });
+      $('probeResultText').textContent = (res.reachable ? '✅ ' : '⚠️ ') + res.message;
+      $('probeResultText').style.color = res.reachable ? 'var(--apple-green)' : 'var(--apple-red)';
+      showToast(res.message, res.reachable ? '✅' : '⚠️');
+    } catch (e) {}
+  });
+
+  $$('.btn-quick-url').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $('inputCodexBaseUrl').value = btn.getAttribute('data-url');
+    });
+  });
+
+  $$('.btn-quick-model').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $$('.btn-quick-model').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      $('inputCodexModel').value = btn.getAttribute('data-model');
+      setWireProtocol(btn.getAttribute('data-wire') || 'responses');
+    });
+  });
+
+  // Quick Image Model Tags inside Main Hub
+  $$('.btn-quick-img-model').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const m = btn.getAttribute('data-model');
+      $('inputInlineImageModel').value = m;
+      $('inputImageModel').value = m;
+      showToast(`已选定生图模型：${m}`, '🎨');
+    });
+  });
+
+  const setWireProtocol = wire => {
+    $('inputCodexWireApi').value = wire;
+    $('cardWireResponses').classList.toggle('active', wire === 'responses');
+    $('cardWireChat').classList.toggle('active', wire === 'chat');
+  };
+  $('cardWireResponses').addEventListener('click', () => setWireProtocol('responses'));
+  $('cardWireChat').addEventListener('click', () => setWireProtocol('chat'));
+
+  $('btnToggleKeyVis').addEventListener('click', () => {
+    const inp = $('inputCodexApiKey');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+  });
+
+  // Main Fetch Models button (Simultaneously populates Coding & Inline Image Model Select!)
+  $('btnMainFetchModels').addEventListener('click', () => {
+    fetchModelsForTarget({
+      baseUrl: $('inputCodexBaseUrl').value.trim(),
+      apiKey: $('inputCodexApiKey').value.trim(),
+      purpose: 'codex',
+      selectEl: $('mainModelSelect'),
+      areaEl: $('mainModelSelectArea'),
+      labelEl: $('lblMainFetchedCount'),
+      inputEl: $('inputCodexModel'),
+      secondSelectEl: $('inlineImageModelSelect'),
+      secondInputEl: $('inputInlineImageModel')
+    });
+    $('inlineImageSelectArea').classList.remove('hidden');
+  });
+
+  // Inline Fetch Image Models button inside One-Key Dual-Use Card
+  $('btnInlineFetchImageModels').addEventListener('click', () => {
+    fetchModelsForTarget({
+      baseUrl: $('inputCodexBaseUrl').value.trim(),
+      apiKey: $('inputCodexApiKey').value.trim(),
+      purpose: 'image',
+      selectEl: $('inlineImageModelSelect'),
+      areaEl: $('inlineImageSelectArea'),
+      labelEl: $('lblInlineImageFetched'),
+      inputEl: $('inputInlineImageModel')
+    });
+  });
+
+  $('btnSaveCodexConfig').addEventListener('click', () => saveCodexConfig(false));
+  $('btnSaveAndApplyCodex').addEventListener('click', () => saveCodexConfig(true));
+  $('btnApplyCodex').addEventListener('click', () => {
+    if (state.connectionCategory === 'official_skill') {
+      applyOfficialSkillBridge();
+    } else if (state.connectionCategory === 'local_llm') {
+      applyLocalLlmMode();
+    } else {
+      saveCodexConfig(true);
+    }
+  });
+
+  $('btnInstallSkillBridge').addEventListener('click', applyOfficialSkillBridge);
+
+  $$('.btn-local-port').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $('inputLocalBaseUrl').value = btn.getAttribute('data-url');
+    });
+  });
+  $('btnScanLocalModels').addEventListener('click', () => {
+    fetchModelsForTarget({
+      baseUrl: $('inputLocalBaseUrl').value.trim(),
+      apiKey: 'ollama',
+      purpose: 'codex',
+      inputEl: $('inputLocalModel')
+    });
+  });
+  $('btnApplyLocalLlm').addEventListener('click', applyLocalLlmMode);
+
+  $('btnTestGatewayCapture').addEventListener('click', async () => {
+    try {
+      await fetch('/v1/responses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          stream: false,
+          input: '/img 测试网关实时捕捉提示 --dry-run'
+        })
+      });
+      await pollLiveGatewayActivity();
+      await refreshLiveEventsList();
+    } catch (e) {}
+  });
+
+  $('btnClearEvents').addEventListener('click', async () => {
+    await api('/api/events/clear', { method: 'POST' });
+    state.lastSeenEventSeq = 0;
+    await refreshLiveEventsList();
+    showToast('实时捕获日志已清空', '🧹');
+  });
+}
+
+function switchConnectionCategory(cat) {
+  state.connectionCategory = cat;
+  $$('.category-tab-card').forEach(c => c.classList.toggle('active', c.getAttribute('data-cat') === cat));
+  $('panelCatRelay').classList.toggle('hidden', cat !== 'relay_api');
+  $('panelCatOfficial').classList.toggle('hidden', cat !== 'official_skill');
+  $('panelCatLocal').classList.toggle('hidden', cat !== 'local_llm');
+}
+
+async function applyOfficialSkillBridge() {
+  try {
+    const res = await api('/api/codex/apply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        connection_category: 'official_skill',
+        official_reasoning_effort: $('selectOfficialEffort').value
+      })
+    });
+    showToast(res.message || '已激活官方模式并注入全局 Image2 视觉插件！', '🔌', 4200);
+    await loadCodexInfo();
+  } catch (e) {}
+}
+
+async function applyLocalLlmMode() {
+  try {
+    const localProv = state.codexProviders.find(p => p.category === 'local_llm') || {
+      id: 'codex-local-ollama',
+      category: 'local_llm',
+      name: '本地 Ollama / LM Studio',
+      wire_api: 'chat',
+      api_key: 'ollama'
+    };
+    localProv.base_url = $('inputLocalBaseUrl').value.trim();
+    localProv.model = $('inputLocalModel').value.trim();
+
+    await api('/api/providers/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'codex', provider: localProv, sync_image_key: false })
+    });
+    const res = await api('/api/codex/apply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: localProv.id,
+        connection_category: 'local_llm',
+        routing_mode: 'gateway'
+      })
+    });
+    showToast(res.message || '本地算力模型已激活！', '💻');
+    await loadCodexInfo();
+  } catch (e) {}
+}
+
+async function loadCodexInfo() {
+  try {
+    const info = await api('/api/codex/info');
+    state.activeCodex = info.active_codex_provider || '';
+    state.codexProviders = info.codex_providers || [];
+    state.syncImageKey = info.sync_image_key !== false;
+    state.activeImageModel = info.active_image_model || 'gpt-image-1';
+    state.mode1_llm_tool = info.mode1_llm_tool !== false;
+    state.mode2_prefix_direct = info.mode2_prefix_direct !== false;
+
+    $('chkMainSyncImage').checked = state.syncImageKey;
+    $('inputInlineImageModel').value = state.activeImageModel;
+    $('chkToggleMode1').checked = state.mode1_llm_tool;
+    $('chkToggleMode2').checked = state.mode2_prefix_direct;
+    $('inputOfficialSkillDir').value = info.skill_dir_path || '~/.codex/skills/image2';
+    $('badgeSkillBridgeStatus').textContent = info.skill_installed ? '✓ 全局 Image2 插件已就绪' : '未安装';
+
+    if (info.recent_events) {
+      renderLiveEvents(info.recent_events);
+    }
+
+    renderCodexProviderCards();
+
+    // GUARANTEED FIRST-TIME ONBOARDING POPUP (Based on backend data/config.json!)
+    if (!state.onboardingChecked) {
+      state.onboardingChecked = true;
+      if (info.should_show_onboarding || window.location.hash === '#onboarding') {
+        $('onboardingModal').classList.remove('hidden');
+      }
+    }
+  } catch (e) {}
+}
+
+function renderCodexProviderCards() {
+  const container = $('codexProviderGrid');
+  container.innerHTML = '';
+
+  const relayList = state.codexProviders.filter(p => p.category !== 'local_llm');
+  relayList.forEach(p => {
+    const isActive = p.id === state.activeCodex;
+    const card = document.createElement('div');
+    card.className = `provider-card ${isActive ? 'active' : ''}`;
+    card.innerHTML = `
+      <div class="card-top-info">
+        <div>
+          <div class="provider-name">${escapeHtml(p.name)}</div>
+          <div class="provider-model-tag">编程模型：${escapeHtml(p.model)}</div>
+          <div class="provider-url-tag">${escapeHtml(p.base_url)}</div>
+        </div>
+        ${isActive ? '<div class="active-check-badge">✓</div>' : ''}
+      </div>
+      <div class="provider-meta-bottom">
+        <span class="protocol-chip">${escapeHtml(p.wire_api || 'responses')} 协议</span>
+        <span style="color:${p.has_key ? 'var(--apple-green)' : 'var(--apple-amber)'}">${p.has_key ? '● 密钥已保存' : '○ 待填 Key'}</span>
+      </div>
+    `;
+
+    card.addEventListener('click', async () => {
+      state.activeCodex = p.id;
+      fillCodexForm(p);
+      renderCodexProviderCards();
+      try {
+        await api('/api/providers/active', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ codex_provider_id: p.id })
+        });
+        showToast(`已切换当前 API 渠道：${p.name}`, '⚡️');
+      } catch (e) {}
+    });
+
+    container.appendChild(card);
+  });
+
+  const activeP = relayList.find(p => p.id === state.activeCodex) || relayList[0];
+  if (activeP) fillCodexForm(activeP);
+}
+
+function fillCodexForm(p) {
+  $('inputCodexName').value = p.name || '';
+  $('inputCodexApiKey').value = p.api_key || '';
+  $('inputCodexModel').value = p.model || 'gpt-4o';
+  $('inputCodexBaseUrl').value = p.base_url || '';
+  const wire = p.wire_api || 'responses';
+  $('inputCodexWireApi').value = wire;
+  $('cardWireResponses').classList.toggle('active', wire === 'responses');
+  $('cardWireChat').classList.toggle('active', wire === 'chat');
+  $('configDrawerProviderName').textContent = p.name || '-';
+}
+
+async function saveCodexConfig(alsoApply = false) {
+  const p = state.codexProviders.find(item => item.id === state.activeCodex) || state.codexProviders[0];
+  if (!p) return;
+
+  const syncImg = $('chkMainSyncImage').checked;
+  const inlineImgModel = $('inputInlineImageModel').value.trim() || 'gpt-image-1';
+  const payload = {
+    ...p,
+    category: 'relay_api',
+    name: $('inputCodexName').value.trim() || p.name,
+    api_key: $('inputCodexApiKey').value.trim(),
+    model: $('inputCodexModel').value.trim() || 'gpt-4o',
+    base_url: $('inputCodexBaseUrl').value.trim() || 'https://api.openai-proxy.org/v1',
+    wire_api: $('inputCodexWireApi').value || 'responses'
+  };
+
+  try {
+    const saveRes = await api('/api/providers/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'codex',
+        provider: payload,
+        sync_image_key: syncImg,
+        image_model: inlineImgModel
+      })
+    });
+
+    if (alsoApply) {
+      const appRes = await api('/api/codex/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: payload.id, connection_category: 'relay_api', routing_mode: 'gateway' })
+      });
+      showToast(appRes.message || '🚀 已保存并同步至 Codex 网关与全局生图插件！', '🚀', 4200);
+    } else {
+      showToast(saveRes.message || '✅ 渠道配置已保存', '💾');
+    }
+    await refreshAll();
+  } catch (e) {}
+}
+
+// 4. Dual Engine Interception Center
+function setupDualEngine() {
+  const chk1 = $('chkToggleMode1');
+  const chk2 = $('chkToggleMode2');
+
+  const onEngineToggle = async () => {
+    state.mode1_llm_tool = chk1.checked;
+    state.mode2_prefix_direct = chk2.checked;
+
+    let badge = '纯透传';
+    if (state.mode1_llm_tool && state.mode2_prefix_direct) badge = '1+2 开';
+    else if (state.mode1_llm_tool) badge = '方案 1 开';
+    else if (state.mode2_prefix_direct) badge = '方案 2 开';
+    $('badgeEngineStatus').textContent = badge;
+
+    try {
+      await api('/api/codex/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode1_llm_tool: state.mode1_llm_tool,
+          mode2_prefix_direct: state.mode2_prefix_direct
+        })
+      });
+      showToast(`双引擎拦截状态已更新：${badge}`, '⚡️');
+    } catch (e) {}
+  };
+
+  chk1.addEventListener('change', onEngineToggle);
+  chk2.addEventListener('change', onEngineToggle);
+  $('btnRunSim').addEventListener('click', runSimulator);
+}
+
+async function runSimulator() {
+  const input = $('simInputPrompt').value.trim();
+  if (!input) return;
+
+  const chip = $('simStatusChip');
+  const text = $('simFlowText');
+
+  try {
+    const r = await fetch('/v1/responses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        stream: false,
+        input: input + ' --dry-run'
+      })
+    }).then(x => x.json());
+
+    if (r.output_text && r.output_text.includes('生图')) {
+      chip.textContent = '🟢 网关已成功截获生图意图！(Dry-Run 验证通过)';
+      chip.style.color = 'var(--apple-green)';
+      text.textContent = r.output_text.replace(/[#*`]/g, '');
+    } else {
+      chip.textContent = '💻 判定为编程/普通对话 -> 透传至主力编程模型';
+      chip.style.color = 'var(--apple-blue)';
+      text.textContent = '未触发画图拦截，100% 原始流式透传给编程大模型。';
+    }
+    await pollLiveGatewayActivity();
+  } catch (e) {}
+}
+
+// 5. Creative Canvas
+function setupCreativeCanvas() {
+  $$('.ratio-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      $$('.ratio-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      state.selectedSize = pill.getAttribute('data-size');
+    });
+  });
+
+  $$('.inspire-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      $('creativePromptInput').value = chip.getAttribute('data-prompt');
+      $('creativePromptInput').focus();
+    });
+  });
+
+  $('btnAttachRef').addEventListener('click', () => $('fileRefInput').click());
+  $('fileRefInput').addEventListener('change', e => handleRefFiles(e.target.files));
+
+  $('creativePromptInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      executeCreativeAction();
+    }
+  });
+
+  $('btnExecuteCreative').addEventListener('click', executeCreativeAction);
+
+  $('btnCopyResultPrompt').addEventListener('click', () => {
+    const t = $('creativePromptInput').value.trim();
+    if (t) {
+      navigator.clipboard.writeText(t);
+      showToast('提示词已复制', '📋');
+    }
+  });
+
+  $('btnDownloadResult').addEventListener('click', () => {
+    const img = $('imgResultPreview');
+    if (img.src) {
+      const a = document.createElement('a');
+      a.href = img.src;
+      a.download = `codex-studio-${Date.now()}.png`;
+      a.click();
+    }
+  });
+
+  $('btnReuseAsRef').addEventListener('click', () => {
+    const img = $('imgResultPreview');
+    if (img.src) {
+      state.refImages.push({ name: 'ref.png', dataUrl: img.src });
+      renderRefPills();
+      showToast('已将当前图像添加为参考图', '🎨');
+    }
+  });
+
+  // Reveal generated photo directly in Windows File Explorer
+  $('btnRevealCanvasResult').addEventListener('click', () => {
+    if (state.lastGeneratedResult) {
+      revealFileInExplorer(state.lastGeneratedResult.filename, state.lastGeneratedResult.path);
+    } else {
+      openFolderInExplorer('outputs');
+    }
+  });
+
+  const btnCopyCanvasImg = $('btnCopyCanvasImage');
+  if (btnCopyCanvasImg) {
+    btnCopyCanvasImg.addEventListener('click', () => {
+      const img = $('imgResultPreview');
+      if (img && img.src) copyImageToClipboard(img.src);
+    });
+  }
+}
+
+function handleRefFiles(files) {
+  Array.from(files).forEach(file => {
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      state.refImages.push({ name: file.name, dataUrl: ev.target.result });
+      renderRefPills();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderRefPills() {
+  const strip = $('refPillsStrip');
+  if (state.refImages.length === 0) {
+    strip.classList.add('hidden');
+    strip.innerHTML = '';
+    return;
+  }
+  strip.classList.remove('hidden');
+  strip.innerHTML = '';
+  state.refImages.forEach((img, idx) => {
+    const pill = document.createElement('div');
+    pill.className = 'ref-pill-item';
+    pill.innerHTML = `<img src="${img.dataUrl}"><span>${escapeHtml(img.name)}</span><button type="button" class="ref-pill-close">×</button>`;
+    pill.querySelector('.ref-pill-close').addEventListener('click', () => {
+      state.refImages.splice(idx, 1);
+      renderRefPills();
+    });
+    strip.appendChild(pill);
+  });
+}
+
+async function executeCreativeAction() {
+  const prompt = $('creativePromptInput').value.trim();
+  if (!prompt) {
+    showToast('请输入画面描述提示词', '⚠️');
+    return;
+  }
+
+  $('canvasEmptyState').classList.add('hidden');
+  $('canvasResultView').classList.add('hidden');
+  $('canvasGeneratingState').classList.remove('hidden');
+  $('btnExecuteText').textContent = '生成中...';
+  $('btnExecuteCreative').disabled = true;
+
+  try {
+    const endpoint = state.refImages.length > 0 ? '/api/edit' : '/api/generate';
+    const result = await api(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt,
+        images: state.refImages.map(r => r.dataUrl),
+        size: state.selectedSize,
+        quality: 'standard'
+      })
+    });
+
+    $('canvasGeneratingState').classList.add('hidden');
+    $('canvasResultView').classList.remove('hidden');
+    $('imgResultPreview').src = result.url;
+    state.lastGeneratedResult = result;
+    showToast(`图像创作完成 (使用模型: ${result.model})`, '✨');
+    await loadGallery();
+    await loadProviders();
+  } catch (err) {
+    $('canvasGeneratingState').classList.add('hidden');
+    $('canvasEmptyState').classList.remove('hidden');
+  } finally {
+    $('btnExecuteText').textContent = '立即生成';
+    $('btnExecuteCreative').disabled = false;
+  }
+}
+
+// 6. Gallery
+function setupGallery() {
+  $('btnRefreshGallery').addEventListener('click', loadGallery);
+  $('btnClearGalleryHistory').addEventListener('click', async () => {
+    if (!confirm('确定清空 outputs/ 目录下所有生成的历史图片吗？')) return;
+    await api('/api/system/clear-history', { method: 'POST' });
+    showToast('已清空所有历史生成图片', '🗑️');
+    await loadGallery();
+    await loadStorageInfo();
+  });
+
+  $('btnOpenOutputsFolder').addEventListener('click', () => {
+    openFolderInExplorer('outputs');
+  });
+
+  $('btnLightboxClose').addEventListener('click', () => $('imageLightbox').classList.add('hidden'));
+  $('lightboxOverlay').addEventListener('click', () => $('imageLightbox').classList.add('hidden'));
+}
+
+async function loadGallery() {
+  try {
+    const list = await api('/api/history');
+    state.history = list;
+    $('galleryCountBadge').textContent = list.length;
+    $('galleryTotalCount').textContent = `${list.length} 件作品`;
+
+    const container = $('galleryGrid');
+    container.innerHTML = '';
+    if (list.length === 0) {
+      container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)">暂无创作历史</div>';
+      return;
+    }
+
+    list.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'gallery-item-card';
+      card.innerHTML = `
+        <div class="gallery-thumb-wrap">
+          <img src="${item.url}" alt="artwork">
+          <button type="button" class="card-quick-reveal-btn" title="在 Windows 文件管理器中定位此照片">📂 定位</button>
+        </div>
+        <div class="gallery-info-bar">
+          <div class="gallery-prompt-snippet">${escapeHtml(item.prompt || '无提示词')}</div>
+          <div class="gallery-date-row">
+            <span>${escapeHtml(item.model || 'gpt-image-2')}</span>
+            <span style="display:flex;gap:4px;align-items:center;">
+              <button type="button" class="btn-card-reveal-text" title="在文件管理器中打开位置">📂 打开位置</button>
+              <span>${new Date(item.created_at).toLocaleTimeString()}</span>
+            </span>
+          </div>
+        </div>
+      `;
+
+      const quickBtn = card.querySelector('.card-quick-reveal-btn');
+      if (quickBtn) {
+        quickBtn.onclick = (e) => {
+          e.stopPropagation();
+          revealFileInExplorer(item.filename, item.path);
+        };
+      }
+      const textBtn = card.querySelector('.btn-card-reveal-text');
+      if (textBtn) {
+        textBtn.onclick = (e) => {
+          e.stopPropagation();
+          revealFileInExplorer(item.filename, item.path);
+        };
+      }
+
+      card.addEventListener('click', () => {
+        $('lightboxImg').src = item.url;
+        $('lightboxPrompt').textContent = item.prompt || '无提示词描述';
+        const fileLocEl = $('lightboxFileLocation');
+        if (fileLocEl) fileLocEl.textContent = item.path || `outputs/${item.filename}`;
+        const modelInfoEl = $('lightboxModelInfo');
+        if (modelInfoEl) modelInfoEl.textContent = `${item.model || 'gpt-image-2'} · ${item.bytes ? (item.bytes/1024).toFixed(1)+' KB' : ''}`;
+
+        const btnReveal = $('btnLightboxReveal');
+        if (btnReveal) {
+          btnReveal.onclick = () => revealFileInExplorer(item.filename, item.path);
+        }
+        const btnCopyImg = $('btnLightboxCopyImage');
+        if (btnCopyImg) {
+          btnCopyImg.onclick = () => copyImageToClipboard(item.url);
+        }
+        if (fileLocEl) {
+          fileLocEl.textContent = item.path || `outputs/${item.filename}`;
+        }
+
+        $('btnLightboxDownload').onclick = () => {
+          const a = document.createElement('a');
+          a.href = item.url;
+          a.download = item.filename;
+          a.click();
+        };
+        $('btnLightboxCopy').onclick = () => {
+          navigator.clipboard.writeText(item.prompt || '');
+          showToast('提示词已复制', '📋');
+        };
+        $('imageLightbox').classList.remove('hidden');
+      });
+      container.appendChild(card);
+    });
+  } catch (e) {}
+}
+
+// 7. Image Engine Settings (WITH ONLINE MODEL FETCH!) & Storage Cleanup
+function setupSettingsAndStorage() {
+  $('btnToggleImageKeyVis').addEventListener('click', () => {
+    const inp = $('inputImageApiKey');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+  });
+
+  // NEW: Online Fetch Image Models in Settings Tab!
+  $('btnImageTabFetchModels').addEventListener('click', () => {
+    fetchModelsForTarget({
+      baseUrl: $('inputImageBaseUrl').value.trim(),
+      apiKey: $('inputImageApiKey').value.trim(),
+      purpose: 'image',
+      selectEl: $('imageTabModelSelect'),
+      areaEl: $('imageTabSelectArea'),
+      labelEl: $('lblImageTabFetchedCount'),
+      inputEl: $('inputImageModel')
+    });
+  });
+
+  // Preset pills in Image Settings Tab
+  $$('.btn-imgtab-preset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $$('.btn-imgtab-preset').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const m = btn.getAttribute('data-model');
+      $('inputImageModel').value = m;
+      $('inputInlineImageModel').value = m;
+      showToast(`已切换生图模型：${m}`, '🎨');
+    });
+  });
+
+  $('selectActiveImageProvider').addEventListener('change', async e => {
+    const id = e.target.value;
+    state.activeImage = id;
+    const p = state.imageProviders.find(item => item.id === id);
+    if (p) fillImageSettings(p);
+    await api('/api/providers/active', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image_provider_id: id })
+    });
+    showToast('已切换默认生图引擎', '🎨');
+  });
+
+  $('btnSaveImageSettings').addEventListener('click', async () => {
+    const p = state.imageProviders.find(item => item.id === state.activeImage) || state.imageProviders[0];
+    if (!p) return;
+    const newModel = $('inputImageModel').value.trim() || 'gpt-image-1';
+    const payload = {
+      ...p,
+      api_key: $('inputImageApiKey').value.trim(),
+      model: newModel,
+      base_url: $('inputImageBaseUrl').value.trim() || 'https://api.openai-proxy.org/v1',
+      generation_path: $('inputImageGenPath').value.trim() || '/images/generations'
+    };
+    await api('/api/providers/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'image', provider: payload })
+    });
+    $('inputInlineImageModel').value = newModel;
+    showToast(`生图引擎配置已保存 (当前模型: ${newModel})`, '✅');
+    await loadProviders();
+  });
+
+  const resetSavedConfigAction = async () => {
+    if (!confirm('确定清空所有已保存的 API 密钥、自定义渠道配置并重新开启新手教学向导吗？')) return;
+    await api('/api/system/reset-config', { method: 'POST' });
+    localStorage.removeItem('codex_onboarding_completed');
+    $('wizApiKey').value = '';
+    $('inputCodexApiKey').value = '';
+    $('inputImageApiKey').value = '';
+    showToast('已清空所有保存的密钥与配置，恢复至初始状态', '🧹');
+    await refreshAll();
+    $('onboardingModal').classList.remove('hidden');
+  };
+
+  $('btnResetSavedConfig').addEventListener('click', resetSavedConfigAction);
+  $('btnWizCleanSavedData').addEventListener('click', resetSavedConfigAction);
+
+  $('btnRestoreCodexToml').addEventListener('click', async () => {
+    const res = await api('/api/codex/restore', { method: 'POST' });
+    showToast(res.message || '已还原 Codex 原始配置', '🔄');
+  });
+
+  $('btnResetBrowserLocal').addEventListener('click', () => {
+    localStorage.clear();
+    $('onboardingModal').classList.remove('hidden');
+    showToast('已重新弹出新手教学向导', '💡');
+  });
+
+  const btnOpenOutputsSettings = $('btnOpenOutputsFolderSettings');
+  if (btnOpenOutputsSettings) {
+    btnOpenOutputsSettings.addEventListener('click', () => openFolderInExplorer('outputs'));
+  }
+  const btnOpenConfigDir = $('btnOpenConfigDirSettings');
+  if (btnOpenConfigDir) {
+    btnOpenConfigDir.addEventListener('click', () => openFolderInExplorer('config_dir'));
+  }
+  const btnOpenCodexHome = $('btnOpenCodexHomeSettings');
+  if (btnOpenCodexHome) {
+    btnOpenCodexHome.addEventListener('click', () => openFolderInExplorer('codex_home'));
+  }
+  const btnOpenSkillDir = $('btnOpenSkillDirSettings');
+  if (btnOpenSkillDir) {
+    btnOpenSkillDir.addEventListener('click', () => openFolderInExplorer('skill_dir'));
+  }
+
+  // Export Desensitized Config Preset
+  const btnExportCfg = $('btnExportDesensitizedConfig');
+  if (btnExportCfg) {
+    btnExportCfg.addEventListener('click', async () => {
+      try {
+        const data = await api('/api/system/export-config');
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `codex-studio-preset-${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+        showToast('已导出不含 API Key 的安全渠道预设文件', '📤');
+      } catch (e) {}
+    });
+  }
+
+  // Import Config Preset
+  const btnImportCfg = $('btnImportConfigBtn');
+  const fileImportInp = $('fileImportConfigInput');
+  if (btnImportCfg && fileImportInp) {
+    btnImportCfg.addEventListener('click', () => fileImportInp.click());
+    fileImportInp.addEventListener('change', async (ev) => {
+      const f = ev.target.files[0];
+      if (!f) return;
+      try {
+        const txt = await f.text();
+        const parsed = JSON.parse(txt);
+        const res = await api('/api/system/import-config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(parsed)
+        });
+        showToast(res.message || '配置预设导入成功', '📥');
+        await refreshAll();
+      } catch (err) {
+        showToast('导入失败：JSON 格式无效', '⚠️');
+      } finally {
+        fileImportInp.value = '';
+      }
+    });
+  }
+}
+
+async function loadStorageInfo() {
+  try {
+    const info = await api('/api/system/storage-info');
+    state.lastStorageInfo = info;
+    renderStorageInfoPaths();
+  } catch (e) {}
+}
+
+function renderStorageInfoPaths() {
+  const info = state.lastStorageInfo || {};
+  const count = info.outputs_count !== undefined ? info.outputs_count : (info.total_images || 0);
+  $('lblStorageConfigFile').textContent = info.config_file || '-';
+  $('lblStorageOutputsDir').textContent = `${info.outputs_dir || '-'} (共 ${count} 张图片 · ${info.total_size_mb || 0} MB)`;
+  $('lblStorageCodexToml').textContent = info.codex_config_toml || '-';
+  $('lblStorageSkillDir').textContent = `${info.codex_skill_dir || '-'} (${info.has_skill_installed !== false ? '已挂载' : '未挂载'})`;
+}
+
+async function loadProviders() {
+  try {
+    const res = await api('/api/providers');
+    state.imageProviders = res.imageProviders || [];
+    state.activeImage = res.activeImage || '';
+
+    const sel = $('selectActiveImageProvider');
+    sel.innerHTML = '';
+    state.imageProviders.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name;
+      opt.selected = p.id === state.activeImage;
+      sel.appendChild(opt);
+    });
+
+    const activeP = state.imageProviders.find(p => p.id === state.activeImage) || state.imageProviders[0];
+    if (activeP) fillImageSettings(activeP);
+  } catch (e) {}
+}
+
+function fillImageSettings(p) {
+  $('inputImageApiKey').value = p.api_key || '';
+  $('inputImageModel').value = p.model || 'gpt-image-1';
+  $('inputInlineImageModel').value = p.model || 'gpt-image-1';
+  $('inputImageBaseUrl').value = p.base_url || '';
+  $('inputImageGenPath').value = p.generation_path || '/images/generations';
+}
+
+// 8. Interactive Onboarding Tutorial Wizard
+function setupOnboardingModal() {
+  const modal = $('onboardingModal');
+  const openWizard = () => modal.classList.remove('hidden');
+  const closeWizard = async () => {
+    if ($('chkDontShowAgain').checked) {
+      localStorage.setItem('codex_onboarding_completed', 'true');
+      try { await api('/api/system/onboarding-complete', { method: 'POST' }); } catch (e) {}
+    }
+    modal.classList.add('hidden');
+  };
+
+  $('btnOpenOnboardingGuide').addEventListener('click', openWizard);
+  $('btnNavOnboarding').addEventListener('click', openWizard);
+  $('btnCloseOnboarding').addEventListener('click', closeWizard);
+  $('onboardingOverlay').addEventListener('click', closeWizard);
+  $('btnFinishOnboarding').addEventListener('click', closeWizard);
+
+  // Interactive stepper pills highlight
+  $$('.wizard-step-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      $$('.wizard-step-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      const sec = $('wizSection' + pill.getAttribute('data-wstep'));
+      if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  });
+
+  $('btnToggleWizKeyVis').addEventListener('click', () => {
+    const inp = $('wizApiKey');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+  });
+
+  $$('.wiz-preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $('wizBaseUrl').value = btn.getAttribute('data-url');
+      $('wizModel').value = btn.getAttribute('data-model');
+    });
+  });
+
+  // Wizard Fetch Models button (Populates BOTH wizModelSelect AND wizImageModelSelect!)
+  $('btnWizFetchModels').addEventListener('click', () => {
+    fetchModelsForTarget({
+      baseUrl: $('wizBaseUrl').value.trim(),
+      apiKey: $('wizApiKey').value.trim(),
+      purpose: 'all',
+      selectEl: $('wizModelSelect'),
+      inputEl: $('wizModel'),
+      secondSelectEl: $('wizImageModelSelect'),
+      secondInputEl: $('wizImageModel')
+    });
+  });
+
+  $('btnWizApplyCodex').addEventListener('click', async () => {
+    const baseUrl = $('wizBaseUrl').value.trim();
+    const apiKey = $('wizApiKey').value.trim();
+    const model = $('wizModel').value.trim() || 'gpt-4o';
+    const imgModel = $('wizImageModel').value.trim() || 'gpt-image-1';
+    const syncImage = $('chkWizSyncImage').checked;
+
+    if (!baseUrl) {
+      showToast('请填写中转站接口地址 Base URL', '⚠️');
+      return;
+    }
+
+    $('wizApplyStatus').textContent = '🔄 正在保存配置并挂载全局 Image2 视觉插件...';
+    $('wizApplyStatus').style.color = 'var(--apple-blue)';
+
+    try {
+      const activeCodexP = state.codexProviders.find(p => p.id === state.activeCodex) || state.codexProviders[0];
+      await api('/api/providers/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'codex',
+          sync_image_key: syncImage,
+          image_model: imgModel,
+          provider: {
+            ...activeCodexP,
+            base_url: baseUrl,
+            api_key: apiKey,
+            model: model,
+            wire_api: 'responses'
+          }
+        })
+      });
+
+      if (syncImage) {
+        const activeImgP = state.imageProviders[0];
+        await api('/api/providers/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'image',
+            provider: {
+              ...activeImgP,
+              base_url: baseUrl,
+              api_key: apiKey,
+              model: imgModel,
+              generation_path: '/images/generations'
+            }
+          })
+        });
+      }
+
+      const appRes = await api('/api/codex/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ connection_category: 'relay_api', routing_mode: 'gateway' })
+      });
+
+      $('wizApplyStatus').textContent = `✅ 激活成功！编程模型: ${model} · 生图模型: ${imgModel}`;
+      $('wizApplyStatus').style.color = 'var(--apple-green)';
+      showToast(appRes.message || '激活成功！', '🚀', 4500);
+      await refreshAll();
+    } catch (e) {
+      $('wizApplyStatus').textContent = '⚠️ 激活出错: ' + e.message;
+      $('wizApplyStatus').style.color = 'var(--apple-red)';
+    }
+  });
+}
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+document.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>
