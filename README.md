@@ -1,160 +1,169 @@
-<div align="center">
+# Codex Studio (v2.5.0)
 
-#  Codex Studio (v2.5.0)
+**Windows Native Desktop API Gateway, Model Switcher & Dual-Engine Visual Studio for OpenAI Codex**  
+**专为 Windows 10/11 打造的 OpenAI Codex 桌面级 API 网关、中转站模型调度器与双引擎视觉工作台**
 
-**专为 OpenAI Codex (CLI & Desktop) 打造的超轻量桌面级 API 网关、双引擎视觉拦截与 AI 创作工作台**  
-*Ultra-Lightweight Desktop API Gateway, Dual-Engine Visual Bridge & Creative Studio for OpenAI Codex*
+> **Platform**: Windows 10 / Windows 11 (x64) | **License**: MIT | **Local Gateway**: `http://127.0.0.1:8765/v1` | **Dependencies**: Zero (`node.exe` / `python.exe` / Standalone `Image2Studio.exe`)
 
-[![Version](https://img.shields.io/badge/Version-v2.5.0-0071E3?style=flat-square)](https://github.com/)
-[![License](https://img.shields.io/badge/License-MIT-34C759?style=flat-square)](./LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-5E5CE6?style=flat-square)](#)
-[![Memory](https://img.shields.io/badge/RAM_Footprint-~4MB_Micro--Kernel-BF5AF2?style=flat-square)](#)
-[![Zero Dependency](https://img.shields.io/badge/Dependencies-Zero_(Pure_Stdlib)-FF9F0A?style=flat-square)](#)
-[![Protocol](https://img.shields.io/badge/Protocol-Responses_API_%26_Chat_Completions-FF375F?style=flat-square)](#)
-
-**[ 🇨🇳 简体中文](#-为什么要做-codex-studio解决-codex-开发者-5-大痛点) &nbsp;|&nbsp; [ 🇺🇸 English Documentation](#-english-documentation) &nbsp;|&nbsp; [ 🚀 30秒快速上手 / Quick Start](#-30-秒快速上手--quick-start)**
+**[ 🇺🇸 English Documentation ](#english-documentation) &nbsp;|&nbsp; [ 🇨🇳 简体中文文档 ](#chinese-documentation)**
 
 ---
 
-**「中转站一 Key 双用 + 编程/生图双模型在线拉取 + `/img` 0 Token 秒级生图 + 看图写代码 0 误判 + 照片一键资源管理器定位」**  
-*One-Click Relay Setup · Dynamic Model Fetching · `/img` 0-Token Direct Draw · 0 False-Positive Vision Coding · Reveal in Explorer*
+## English Documentation
 
-</div>
+**Codex Studio** is a Windows-native desktop companion utility for **OpenAI Codex (CLI & Desktop App)**. It runs a local API gateway on `http://127.0.0.1:8765/v1` that manages `%USERPROFILE%\.codex\config.toml`, dynamically fetches coding and image models from third-party API relays, and bridges image generation into Codex without breaking vision-based coding tasks.
 
----
+### 1. Core Problems Solved
 
-## 💡 为什么要做 Codex Studio？（解决 Codex 开发者 5 大痛点）
-
-在使用 **OpenAI Codex CLI / Desktop** 结合第三方 API 中转站（OneAPI / NewAPI）、DeepSeek、Claude、硅基流动（SiliconFlow）或本地 Ollama 时，开发者经常遇到以下棘手痛点：
-
-1. **手动改配置文件极其繁琐**：每次切换中转站或模型，都要去翻找并手动编辑 `~/.codex/config.toml` 和 `auth.json`，格式稍有不慎就报错；
-2. **生图模型因渠道分组报 503 (`model_not_found`)**：不同中转站令牌分组支持的视觉模型各不相同（如 `gpt-image-2`、`gpt-image-1`、`flux-pro`、`dall-e-3`），写死模型名极易报 `HTTP 503 No available channel`；
-3. **“看图写代码”与“画图”冲突误判 & 工具循环重发**：传统生图插件常把「参考这张 UI 截图写个 React 组件」误判为画图请求，白白浪费额度；或者在工具执行回传阶段（`function_call_output`）陷入重复发送请求的死循环；
-4. **生成的照片找不到物理路径**：AI 画完图后保存在深层目录，想发给队友或拖进项目里得翻半天文件夹；
-5. **缺少常驻托盘与优雅管理**：关掉窗口后后台进程无法唤回，端口被占用无法重启，缺少可视化的托盘控制与内存整理。
-
-**Codex Studio** 将 **「类 CC Switch 的多渠道模型调度器」+「双引擎视觉拦截网关」+「Apple macOS Sequoia 风格独立桌面工作台」** 三合一，常驻内存仅 **~4MB**，真正实现**零依赖、免安装、双击即用**。
+1. **Manual `config.toml` Editing**: Switching between OneAPI / NewAPI relays, OpenAI Official, DeepSeek, Claude, SiliconFlow, or local Ollama normally requires manual edits to `%USERPROFILE%\.codex\config.toml` and `auth.json`. Codex Studio updates and backs up (`config.toml.bak`) these files in one click.
+2. **Relay Image Model `HTTP 503` Errors**: Different API relay token groups expose different image models (`gpt-image-2`, `gpt-image-1`, `dall-e-3`, `flux-pro`). Hardcoding `dall-e-3` often causes `HTTP 503 model_not_found / No available channel`. Codex Studio fetches `/v1/models` to list available image models and automatically falls back to a supported model if a `503` occurs.
+3. **Vision Coding False Positives & Infinite Tool Loops**:
+   * Sending a UI screenshot and asking *"Write a React component based on this image"* can be misclassified by naive regex plugins as an image generation request.
+   * When Codex returns tool execution outputs (`function_call_output` / `role: "tool"`), naive interceptors re-trigger on historical user messages and enter an infinite loop.
+   * Codex Studio's `getFreshUserPrompt` parser strictly checks only the latest message in the array, ignores tool output turns (`100%` pass-through), applies a code-intent guardrail, and enforces a 2.5-second duplicate-request debounce.
+4. **Locating Generated Images on Windows**: Generated PNG files are saved to the local `outputs\` directory. Clicking **Reveal in Explorer (`📂 打开文件位置`)** calls `explorer.exe /select,"<winPath>"` to open Windows File Explorer with the exact photo highlighted.
+5. **Background Process & System Tray Management**: Launching via `CodexStudio.vbs` starts the backend silently (zero `cmd.exe` black window), opens a frameless desktop window via Edge/Chrome `--app` mode, and places a native `.NET NotifyIcon` (`tray.ps1`) in the Windows system tray.
 
 ---
 
-## 🏆 与同类开源项目横向对比 (Comparison)
+### 2. Feature Comparison
 
-| 核心能力 / Feature | CC Switch (`cc-switch`) | 传统代理 (`codex-proxy`) | 传统生图插件 (`codex-imagen`) | ** Codex Studio (本项目)** |
+| Feature | CC Switch (`cc-switch`) | CLI Proxies (`codex-proxy`) | Image Skills (`codex-imagen`) | **Codex Studio (This Project)** |
 | :--- | :---: | :---: | :---: | :---: |
-| **独立桌面软件窗口 + 右下角系统托盘** | ✅ 拥有 | ❌ 仅命令行 | ❌ 仅脚本 | **✅ Sequoia 独立窗口 + 原生托盘常驻** |
-| **中转站编程模型在线拉取 (`/v1/models`)** | ✅ 拥有 | ❌ 手写配置 | ❌ 无 | **✅ 一键在线拉取并按常用度智能排序** |
-| **生图引擎在线拉取模型 + 503 自动自愈** | ❌ 不支持生图 | ❌ 无 | ❌ 写死模型易报 503 | **✅ 分类下拉选取 + 503 自动探测回退** |
-| **方案一：自然语言生图 + 看图写代码 0 误判** | ❌ 无 | ⚠️ 仅透传 | ❌ 极易误触发 | **✅ 终端消息精准判定 + 代码护栏** |
-| **方案二：`/img` 显式指令 0 Token 秒生图** | ❌ 无 | ❌ 无 | ❌ 消耗对话 Token | **✅ 本地微内核毫秒级截获 (0 对话 Token)** |
-| **多轮工具调用防死循环 (`getFreshUserPrompt`)** | ⚠️ 无视觉拦截 | ✅ 正常 | ❌ 易循环重发 | **✅ 严格区分用户新提问与工具回调** |
-| **已生成照片一键打开资源管理器高亮定位** | ❌ 无 | ❌ 无 | ❌ 仅返回文本路径 | **✅ 一键 `explorer /select` 高亮选中照片** |
-| **零环境免安装开箱即用** | 需安装运行库 | 需编译环境 | 需预装依赖 | **✅ Windows 免安装版 + 0 依赖双微内核** |
+| **Target OS** | Cross-platform | CLI only | CLI only | **Windows 10 / 11 (x64) Native** |
+| **Frameless Desktop Window & Windows Tray** | Yes | No | No | **Yes (`--app` Window + `tray.ps1` NotifyIcon)** |
+| **Dynamic `/v1/models` Fetching** | Coding models only | No | No | **Both Coding LLMs & Image Models** |
+| **HTTP 503 Image Model Auto-Fallback** | N/A | No | No | **Auto-probes `/v1/models` & retries** |
+| **Mode 1: Natural Language Draw + Code Guardrail** | No | Pass-through only | High false positives | **Yes (0 false positives on screenshot coding)** |
+| **Mode 2: `/img` & `/draw` 0-Token Direct Draw** | No | No | Uses LLM tokens | **Yes (Local intercept in `<5ms`, 0 LLM tokens)** |
+| **Tool-Call Anti-Loop (`getFreshUserPrompt`)** | N/A | Yes | Prone to loops | **Yes (Strict `function_call_output` pass-through)** |
+| **One-Click `explorer.exe /select` File Highlight** | No | No | Text path only | **Yes (Studio Canvas, Gallery & Lightbox)** |
 
 ---
 
-## ✨ 核心功能亮点 (Key Highlights)
+### 3. Windows Architecture & Runtime Priority
 
-### 1. 四大渠道模式 +「一 Key 双用」编程/生图双模型在线拉取
-* **聚合中转站 (OneAPI / NewAPI / 通用中继)**：填入中转站 `Base URL` 与 `sk-...` 令牌，点击 **「🔄 在线拉取模型列表」**，自动拉取并分类展示 **「主力编程大模型」** 与 **「🎨 识别到的视觉生图模型」**；
-* **HTTP 503 智能自愈回退 (Auto-Healing Fallback)**：当指定的生图模型在当前中转分组不可用（返回 `HTTP 503 model_not_found`）时，微内核自动向 `/v1/models` 嗅探当前分组支持的生图模型（如 `gpt-image-2`、`gpt-image-1`、`flux-pro`）并无感重试、自动保存；
-* **全生态兼容**：支持 **官方账号 + 本地全局 `image2` Skill 混合模式**、**OpenAI / DeepSeek / 硅基流动 (SiliconFlow) / Claude 专线** 以及 **本地 Ollama / vLLM / LM Studio 一键免 Key 接入**；
-* **原生双协议支持**：完美支持 OpenAI Codex 官方原生 **Responses API (`wire_api = "responses"`)** 与通用 **Chat Completions (`wire_api = "chat"`)**。
+When you double-click **`CodexStudio.vbs`** on Windows, it performs a pre-flight check on `http://127.0.0.1:8765/api/health`, cleans up any stale process holding port `8765`, and starts the local gateway using a 4-stage detection chain:
 
-### 2. 双引擎视觉拦截架构（彻底告别看图写代码误判与死循环）
-* **方案一（自然语言生图意图识别）**：直接对 Codex 说 `生成一张20世纪80年代中国家庭春节全家福`，网关自动调拨生图引擎；当说 `参考这张设计图帮我写一个 React 登录组件` 时，代码护栏生效，100% 透传给编程大模型写代码；
-* **方案二（`/img`、`/draw`、`/image`、`画图:` 显式直达）**：输入 `/img 赛博朋克雨夜霓虹街道 16:9`，本地网关在进门瞬间毫秒级截获出图，**0 额外对话 Token 消耗**；
-* **终端消息精准判定 (`getFreshUserPrompt`)**：严格逆序解析消息栈，仅在用户发起的新提问回合触发拦截；遇到工具执行输出（`function_call_output` / `role: tool`）时 **100% 透明透传**，彻底根除多轮工具调用时的循环重发问题。
-
-### 3. 照片一键资源管理器定位 + 高清原图复制剪贴板
-* 在 **AI 视觉工坊**、**本地作品画廊卡片**、**全屏大图灯箱 (Lightbox)** 中：
-  * 点击 **「📂 打开文件位置」**：直接呼出 Windows 资源管理器并**自动高亮选中该张照片**（基于反斜杠规范化的 `explorer.exe /select,"<path>"`）；
-  * 点击 **「🖼️ 复制图片」**：直接将高清 PNG 原图写入系统剪贴板，可在微信、飞书、Discord、B站或文档中直接 `Ctrl+V` 粘贴。
-
-### 4. 透明本地存储看板 + 安全配置预设导出与导入
-* **四大存储路径一键直达**：直观展示本地配置文件 (`data/config.json`)、作品目录 (`outputs/`)、Codex 核心配置 (`~/.codex/config.toml`) 与全局视觉 Skill (`~/.codex/skills/image2`) 的实时状态，每一行均支持一键打开对应文件夹；
-* **零泄漏配置分享**：支持 **「📤 导出配置预设」**（自动剥离全部 API Key）与 **「📥 导入配置预设」**（自动保留本地既有密钥），方便在 GitHub Issue、社区或团队间安全共享中转站模板。
+1. **Priority 1 — Node.js Micro-Kernel (`node.exe server.js`)**: Zero `npm` dependencies, uses standard library `http`/`https`/`fs`/`crypto`/`child_process`, ~4 MB heap usage.
+2. **Priority 2 — Python 3 Executable (`python.exe server.py`)**: Zero `pip` dependencies, 100% API-identical to `server.js` (verifies real Python vs. Windows Store 0-byte stub).
+3. **Priority 3 — Windows Python Launcher (`py.exe -3 server.py`)**: Uses the official Windows Python launcher if installed.
+4. **Priority 4 — Standalone Windows Runtime (`Image2Studio\Image2Studio.exe`)**: Bundled in `CodexStudio-v2.5.0-Windows-x64.zip` so users without Node.js or Python installed can run out of the box.
 
 ---
 
-## 🚀 30 秒快速上手 / Quick Start
+### 4. Quick Start (Windows 10 / 11)
 
-### 方式 A：Windows 独立免安装完整版（推荐普通用户，零环境要求）
-1. 前往 [**Releases 页面**](../../releases) 下载最新的 **`CodexStudio-v2.5.0-Windows-x64.zip`** 并解压；
-2. 直接双击根目录下的 **`CodexStudio.vbs`**（零黑框秒开独立软件窗口，并在桌面右下角自动生成蓝底 `C` 字系统托盘图标）；
-3. 首次启动会自动弹出 **3 步新手教学与配置向导**：
-   * **Step 1**：填入中转站地址（如 `https://your-relay.com/v1`）与 API Key，点击「🔄 在线拉取模型列表」选定编程模型与生图模型；
-   * **Step 2**：确认开启「双引擎拦截（方案 1+2 双开）」；
-   * **Step 3**：点击 **「🚀 一键保存并激活 Codex」**，自动写入 `~/.codex/config.toml` 并挂载全局 `image2` 视觉插件！
+#### Option A: Windows Portable Full Package (`CodexStudio-v2.5.0-Windows-x64.zip`)
+*Requires **no** Node.js or Python installation.*
+1. Download and extract `CodexStudio-v2.5.0-Windows-x64.zip`.
+2. Double-click **`CodexStudio.vbs`**.
+3. Follow the 3-step Onboarding Wizard:
+   * **Step 1**: Choose your connection mode (Relay API, Official Hybrid, Direct API, or Local Ollama), enter your Base URL and API Key, and click **Fetch Models (`🔄 在线拉取模型列表`)** to select your coding model and image model.
+   * **Step 2**: Keep Dual-Engine Interception (**Mode 1 + Mode 2**) enabled.
+   * **Step 3**: Click **Apply & Activate Codex (`🚀 一键保存并激活 Codex`)** to write `%USERPROFILE%\.codex\config.toml` and install the global `%USERPROFILE%\.codex\skills\image2` skill.
 
-### 方式 B：跨平台源码版启动（macOS / Linux / Windows 开发者）
-本项目采用**零外部依赖（Zero-Dependency）**设计，提供 100% 接口等价的 **Node.js** 与 **Python 3** 双微内核，无需执行 `npm install` 或 `pip install`：
-
-```bash
-# 克隆仓库
-git clone https://github.com/<your-username>/CodexStudio.git
-cd CodexStudio
-
-# 任选其一启动（常驻内存仅 ~4MB）：
-node server.js
-# 或者使用 Python 3：
-python3 server.py
-```
-启动后在浏览器访问 `http://127.0.0.1:8765` 即可打开工作台（Windows 下也可直接双击 `CodexStudio.vbs` 自动调用本机 Node/Python 并启动托盘）。
+#### Option B: Lightweight Source Package (`CodexStudio-v2.5.0-Source.zip`)
+*For Windows developers who already have Node.js or Python 3 installed.*
+1. Extract `CodexStudio-v2.5.0-Source.zip` (or clone this repository).
+2. Double-click **`CodexStudio.vbs`** (or run `node server.js` / `python server.py` in PowerShell/CMD and open `http://127.0.0.1:8765`).
 
 ---
 
-## 💻 Codex 终端实战指令示例 (Terminal Usage Examples)
+### 5. Codex Terminal Usage Examples
+
+Once synced to `%USERPROFILE%\.codex\config.toml`, use Codex normally in your terminal or IDE:
 
 ```text
-# 1. 【方案二】0 Token 毫秒级显式生图（绕过对话大模型，直接调用生图引擎）：
-> /img 赛博朋克风格的雨夜霓虹街道，16:9 宽屏壁纸
-> /draw 生成一张极简苹果风格的 3D 玻璃拟态狐狸图标
+# 1. Mode 2: Explicit prefix command (Intercepted locally, 0 conversational LLM tokens used)
+> /img cyberpunk neon street in rainy night, 16:9
+> /draw minimalist 3D clay style fox icon, 1024x1024
 
-# 2. 【方案一】自然语言随口画图（智能语义识别）：
-> 帮我生成一张中国20世纪80年代春节团聚的怀旧全家福
+# 2. Mode 1: Natural language image request (Routed to image generation engine)
+> Generate a nostalgic 1980s Chinese family Lunar New Year reunion photo
 
-# 3. 【代码护栏】看图写代码（100% 正常输出代码，绝不误触生图）：
-> 参考 @ui-design.png 帮我写一个带深色模式的 React 登录组件
+# 3. Code Guardrail: Vision coding with screenshot (100% passed through to coding LLM)
+> Based on @ui-screenshot.png, write a responsive React login component with Tailwind CSS
 ```
 
 ---
 
-<br>
-
-# 🇺🇸 English Documentation
-
-**Codex Studio** is an ultra-lightweight (~4MB RAM), zero-dependency desktop API gateway, model switcher (inspired by *CC Switch*), dual-engine visual interceptor, and Apple macOS Sequoia-styled creative studio purpose-built for **OpenAI Codex (CLI & Desktop App)**.
-
-### 💡 Why Codex Studio? (Solving 5 Major Pain Points)
-1. **Effortless Relay & Provider Switching**: Stop editing `~/.codex/config.toml` and `auth.json` by hand. Switch between **OneAPI / NewAPI relays**, **OpenAI Official**, **DeepSeek**, **Claude**, **SiliconFlow**, and local **Ollama / vLLM** in one click.
-2. **Dynamic Model Fetching & HTTP 503 Auto-Healing**: Fetch available coding and image models directly from your relay's `/v1/models` endpoint. If an image model returns `HTTP 503 model_not_found`, Codex Studio automatically probes your relay for supported visual models (`gpt-image-2`, `gpt-image-1`, `flux-pro`, `dall-e-3`) and retries seamlessly.
-3. **Zero False Positives on Vision Coding & Anti-Loop Guard**:
-   * **Mode 1 (Semantic Intent + Code Guardrail)**: Natural language image requests trigger image generation, while *"Write React code based on this screenshot"* passes straight through to the coding LLM with **0% false positives**.
-   * **Mode 2 (`/img`, `/draw`, `/image` Direct Prefix)**: Intercepted locally in `<5ms` with **0 conversational LLM tokens consumed**.
-   * **Terminal Message Anti-Loop (`getFreshUserPrompt`)**: Strictly inspects the latest turn in the message stack. Tool outputs (`function_call_output` / `role: tool`) are 100% transparently passed through, completely eliminating infinite tool-call loops.
-4. **One-Click Reveal in File Explorer & Native Clipboard Copy**: Click **"📂 Reveal in Explorer"** on any generated photo in the studio or gallery to launch Windows Explorer with the exact file highlighted (`explorer.exe /select`), or copy the raw HD PNG directly to your system clipboard.
-5. **Zero-Leak Config Preset Sharing**: Export your provider configurations with API keys automatically stripped for safe sharing in GitHub Issues or teams, and import presets without overwriting your local keys.
-
-### 📁 Project Structure
+### 6. Project Directory Structure
 
 ```text
 CodexStudio/
-├── CodexStudio.vbs        # Windows native 0-console launcher (Pure 7-bit ASCII, 4-stage runtime detection)
-├── tray.ps1               # Windows native system tray daemon (Single-click restore, RAM GC, safe exit)
-├── server.js              # Node.js zero-dependency micro-kernel (~4MB RAM, Responses & Chat API proxy)
-├── server.py              # Python 3 zero-dependency micro-kernel (100% API-identical to server.js)
+├── CodexStudio.vbs        # Windows native zero-console launcher (Pure 7-bit ASCII)
+├── tray.ps1               # Windows native system tray daemon (.NET System.Windows.Forms)
+├── server.js              # Node.js zero-dependency micro-kernel gateway (Port 8765)
+├── server.py              # Python 3 zero-dependency micro-kernel gateway (Port 8765)
 ├── data/
-│   └── config.json        # Local provider, routing, and onboarding state configuration
+│   └── config.json        # Local provider, routing, and onboarding configuration
 ├── public/
-│   └── index.html         # Apple macOS Sequoia HIG single-page desktop studio UI
-├── outputs/               # Generated artworks and JSON metadata storage
+│   └── index.html         # Single-page desktop studio UI (macOS Sequoia dark/light theme)
+├── outputs/               # Generated PNG images and JSON metadata sidecars
 ├── LICENSE                # MIT License
-└── README.md              # Bilingual documentation (CN / EN)
+└── README.md              # English & Chinese documentation
 ```
 
 ---
+---
 
-## 📄 License / 开源协议
+## Chinese Documentation
 
-Released under the [MIT License](./LICENSE). Free for personal and commercial use.  
-本项目基于 [MIT License](./LICENSE) 开源。如果这个小工具对你的开发效率有帮助，欢迎点亮右上角的 ⭐ **Star** 支持！
+**[ ⬆️ Back to Top / 返回顶部 ](#codex-studio-v250)**
+
+**Codex Studio** 是一款专为 **Windows 10 / Windows 11 (x64)** 平台打造的 **OpenAI Codex (CLI & 桌面端)** 本地 API 网关、多渠道模型切换器与双引擎视觉创作工作台。软件通过监听本地 `http://127.0.0.1:8765/v1` 接管 Codex 请求，支持一键写入 `%USERPROFILE%\.codex\config.toml`，并彻底解决中转站生图报错、看图写代码误判及工具调用死循环问题。
+
+### 1. 解决的 5 大真实痛点
+
+1. **告别手动修改 `config.toml`**：切换 OneAPI / NewAPI 聚合中转站、OpenAI 官方、DeepSeek、Claude、硅基流动（SiliconFlow）或本地 Ollama 时，无需再手动编辑 `%USERPROFILE%\.codex\config.toml` 和 `auth.json`，一键点击即可自动备份（`config.toml.bak`）并写入配置。
+2. **中转站生图模型在线拉取与 HTTP 503 自动回退自愈**：不同中转站的令牌分组支持的生图模型不同（如 `gpt-image-2`、`gpt-image-1`、`dall-e-3`、`flux-pro`）。点击 **「🔄 在线拉取模型列表」** 可同时拉取并分类展示「主力编程大模型」与「🎨 识别到的视觉生图模型」；若当前生图模型返回 `HTTP 503 model_not_found / No available channel`，微内核会自动向 `/v1/models` 探测可用生图模型并无感重试、自动保存。
+3. **看图写代码 0 误判 & 工具调用防死循环 (`getFreshUserPrompt`)**：
+   * **代码护栏**：发送 UI 截图并输入「参考这张图写一个 React 组件」时，代码护栏生效，100% 透传给编程大模型输出代码，绝不误触发画图；
+   * **防死循环重发**：严格检查消息数组（`messages` / `input`）的最后一条记录。当检测到工具执行回调（`type === "function_call_output"` 或 `role === "tool"`）时，直接返回 `null` 并 100% 原样透传给上游大模型，配合 2.5 秒重复指令防抖，彻底杜绝多轮工具调用时的循环重发问题。
+4. **已生成照片一键打开 Windows 资源管理器定位**：所有生成的图片均保存在本地 `outputs\` 目录。在视觉工坊、作品画廊卡片或全屏灯箱中点击 **「📂 打开文件位置」**，后端会自动将路径规范化为 Windows 反斜杠格式并调用 `explorer.exe /select,"<物理路径>"`，直接弹出资源管理器并高亮选中该张照片；点击 **「🖼️ 复制图片」** 可将高清 PNG 原图直接写入系统剪贴板。
+5. **Windows 原生零黑框启动与右下角托盘常驻**：双击 `CodexStudio.vbs` 即可静默拉起后台服务，通过 Edge / Chrome 的 `--app` 模式打开无地址栏的独立桌面窗口，并在任务栏右下角驻留蓝底 `C` 字系统托盘图标（`tray.ps1`）。
+
+---
+
+### 2. 四大接入模式与核心功能
+
+* **⚡ 聚合中转站 (OneAPI / NewAPI · 一 Key 双用)**：同一个中转站 API Key 与 Base URL 同时驱动 Codex 编程与视觉生图，支持 OpenAI 原生 `Responses API` (`wire_api = "responses"`) 与通用 `Chat Completions` (`wire_api = "chat"`) 协议；
+* **🛡️ 官方账号 + 本地混合生图**：保留 Codex 官方 Plus/Pro 网页登录态，同时自动在 `%USERPROFILE%\.codex\skills\image2` 挂载全局生图 Skill；
+* **🌐 官方 / 专线 API (OpenAI / DeepSeek / Claude / 硅基流动)**：内置快捷地址胶囊与常用模型预设；
+* **💻 本地大模型 (Ollama / vLLM / LM Studio)**：一键免 Key 接入本机 `http://127.0.0.1:11434/v1`；
+* **🗄️ 本地存储透明看板 & 无泄漏配置导出/导入**：在设置页实时展示 `data\config.json`、`outputs\`、`%USERPROFILE%\.codex\config.toml`、`%USERPROFILE%\.codex\skills\image2` 四大路径状态，每一行均可点击 **「📂 打开位置」** 直达文件夹；支持一键导出自动剥离了 API Key 的配置预设 JSON，以及保留本地既有密钥的安全导入。
+
+---
+
+### 3. Windows 平台快速上手
+
+#### 方式一：下载 Windows 免安装完整版 (`CodexStudio-v2.5.0-Windows-x64.zip`)
+*内置独立运行环境（含 `Image2Studio\Image2Studio.exe`），电脑无需安装 Node.js 或 Python。*
+1. 在 GitHub Releases 下载 **`CodexStudio-v2.5.0-Windows-x64.zip`** 并解压到任意英文或中文路径；
+2. 双击根目录下的 **`CodexStudio.vbs`**；
+3. 在自动弹出的 **3 步新手向导** 中填入中转站地址与 API Key -> 点击「🔄 在线拉取模型列表」选择编程与生图模型 -> 点击 **「🚀 一键保存并激活 Codex」** 即可开始使用。
+
+#### 方式二：下载轻量纯源码包 (`CodexStudio-v2.5.0-Source.zip`)
+*仅 87 KB，适合电脑上已安装 Node.js 或 Python 3 的 Windows 开发者。*
+1. 解压 `CodexStudio-v2.5.0-Source.zip`；
+2. 直接双击 **`CodexStudio.vbs`**（脚本会自动检测本机 `node.exe` 或 `python.exe` 并在后台静默拉起 `server.js` / `server.py`，同时启动右下角托盘与独立桌面窗口）。
+
+---
+
+### 4. Windows 右下角系统托盘 (`tray.ps1`) 操作说明
+
+启动后，Windows 任务栏右下角通知区域会出现蓝底 `C` 字图标：
+* **左键单击 / 双击图标**：立即重新呼出 Codex Studio 独立桌面软件窗口；
+* **右键菜单**：
+  * **打开 Codex Studio 桌面工作台**
+  * **打开新手配置与清理向导**
+  * **整理微内核内存 (RAM GC)**：调用 `/api/system/gc` 释放内存并弹出通知提示
+  * **在系统浏览器中打开**
+  * **彻底关闭后台并退出 (Quit)**：安全关闭后台守护进程并释放 `8765` 端口
+
+---
+
+## License
+
+Released under the MIT License. See the `LICENSE` file in the root directory for details.
