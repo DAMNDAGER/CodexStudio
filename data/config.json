@@ -6,7 +6,7 @@
   "connectionCategory": "relay_api",
   "officialReasoningEffort": "medium",
   "officialModel": "gpt-4o",
-  "onboarding_completed": false,
+  "onboarding_completed": true,
   "mode1_llm_tool": true,
   "mode2_prefix_direct": true,
   "codexProviders": [
