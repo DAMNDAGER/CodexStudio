@@ -372,7 +372,7 @@ Use the local Codex Studio gateway as the visual generation engine.
 
 ## Instructions
 1. When generating or editing images, use the local CLI tool:
-   - On Windows: `"%CODEX_HOME%\\skills\\image2\\Image2CLI.exe" --prompt "<optimized prompt>"` (or `python "%CODEX_HOME%\\skills\\image2\\image2_cli.py" --prompt "<optimized prompt>"`)
+   - On Windows: `"%CODEX_HOME%\\skills\\image2\\Image2CLI.cmd" --prompt "<optimized prompt>"` (or `python "%CODEX_HOME%\\skills\\image2\\image2_cli.py" --prompt "<optimized prompt>"`)
 2. For image references, add `--image-path "C:\\path\\to\\image.png"` or `--image-url "https://..."`.
 3. For dry-run simulation, add `--dry-run`.
 4. The CLI outputs JSON containing the generated image's local file path (`path`) and preview URL.
@@ -474,20 +474,13 @@ def install_global_codex_skill():
         with open(os.path.join(skill_dir, "image2_cli.py"), "w", encoding="utf-8") as f:
             f.write(STANDALONE_CLI_PY)
 
-        cli_candidates = [
-            os.path.join(ROOT_DIR, "Image2Studio", "Image2Studio", "Image2CLI.exe"),
-            os.path.join(ROOT_DIR, "Image2Studio", "Image2CLI.exe"),
-            os.path.join(ROOT_DIR, "Image2CLI.exe")
-        ]
-        copied_exe = False
-        for cand in cli_candidates:
-            if os.path.exists(cand):
-                try:
-                    shutil.copy2(cand, os.path.join(skill_dir, "Image2CLI.exe"))
-                    copied_exe = True
-                    break
-                except Exception:
-                    pass
+        cmd_wrapper = '@echo off\r\npython "%~dp0image2_cli.py" %*\r\n'
+        try:
+            with open(os.path.join(skill_dir, "Image2CLI.cmd"), "w", encoding="utf-8") as cf:
+                cf.write(cmd_wrapper)
+        except Exception:
+            pass
+        copied_exe = True
 
         client_cfg = {
             "server": f"http://{HOST}:{PORT}",
@@ -503,7 +496,7 @@ def install_global_codex_skill():
             "ok": True,
             "installed": True,
             "global_skill_target": skill_dir,
-            "has_cli_exe": copied_exe or os.path.exists(os.path.join(skill_dir, "Image2CLI.exe")),
+            "has_cli_exe": copied_exe or os.path.exists(os.path.join(skill_dir, "Image2CLI.cmd")),
             "has_cli_py": True
         }
     except Exception as e:
@@ -1246,7 +1239,7 @@ class CodexStudioHandler(BaseHTTPRequestHandler):
         client_ip = self.client_address[0] if self.client_address else ""
         ua = self.headers.get("User-Agent") or ""
         if not origin and client_ip in ("127.0.0.1", "::1", "::ffff:127.0.0.1"):
-            if not ua or re.search(r"PowerShell|WindowsPowerShell|curl|Python-urllib", ua, re.I):
+            if not ua or re.search(r"PowerShell|WindowsPowerShell|curl|Python-urllib|WinHttp|MSXML", ua, re.I):
                 return True, 200, ""
 
         return False, 401, "Unauthorized: Missing or invalid X-Image2-Local-Token"
@@ -2420,10 +2413,75 @@ class CodexStudioHandler(BaseHTTPRequestHandler):
                 })
 
 
+def launch_windows_desktop_window_and_tray():
+    if sys.platform != "win32":
+        return
+    target_url = f"http://{HOST}:{PORT}"
+    try:
+        tray_script = os.path.join(ROOT_DIR, "tray.ps1")
+        if os.path.exists(tray_script):
+            subprocess.Popen(
+                ["powershell.exe", "-NoProfile", "-Sta", "-File", tray_script],
+                cwd=ROOT_DIR,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)
+            )
+    except Exception:
+        pass
+
+    try:
+        win_args = [f"--app={target_url}", "--window-size=1440,860", "--window-position=120,60"]
+        edge_cands = [
+            os.path.join(os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)"), "Microsoft", "Edge", "Application", "msedge.exe"),
+            os.path.join(os.environ.get("ProgramFiles", "C:\\Program Files"), "Microsoft", "Edge", "Application", "msedge.exe"),
+            os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Edge", "Application", "msedge.exe"),
+        ]
+        chrome_cands = [
+            os.path.join(os.environ.get("ProgramFiles", "C:\\Program Files"), "Google", "Chrome", "Application", "chrome.exe"),
+            os.path.join(os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)"), "Google", "Chrome", "Application", "chrome.exe"),
+            os.path.join(os.environ.get("LOCALAPPDATA", ""), "Google", "Chrome", "Application", "chrome.exe"),
+        ]
+        browser_bin = next((p for p in edge_cands + chrome_cands if p and os.path.exists(p)), None)
+        if browser_bin:
+            subprocess.Popen([browser_bin] + win_args, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            subprocess.Popen(["explorer.exe", target_url], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception:
+        pass
+
+
 def main():
+    is_desktop_mode = "--desktop" in sys.argv
+    try:
+        req = urllib.request.Request(f"http://{HOST}:{PORT}/api/health", method="GET")
+        with urllib.request.urlopen(req, timeout=0.5) as resp:
+            body = resp.read().decode("utf-8", "ignore")
+            if resp.status == 200 and "2.6.0" in body:
+                if is_desktop_mode:
+                    launch_windows_desktop_window_and_tray()
+                return
+            else:
+                shut_req = urllib.request.Request(
+                    f"http://{HOST}:{PORT}/api/system/shutdown",
+                    data=b"{}",
+                    headers={"Content-Type": "application/json", "X-Image2-Local-Token": LOCAL_SERVICE_TOKEN},
+                    method="POST"
+                )
+                try:
+                    urllib.request.urlopen(shut_req, timeout=0.5)
+                except Exception:
+                    pass
+                time.sleep(0.4)
+    except Exception:
+        pass
+
     server = DualStackThreadingHTTPServer((HOST, PORT), CodexStudioHandler)
     mem = get_memory_stats()
     print(f"[Codex Studio v2.6.0 Python Multi-Threaded Kernel] Running on http://{HOST}:{PORT} | Gateway: /v1 | RAM: {mem['rss_mb']}MB RSS")
+    if is_desktop_mode:
+        launch_windows_desktop_window_and_tray()
     try:
         server.serve_forever()
     except KeyboardInterrupt:

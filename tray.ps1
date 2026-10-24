@@ -1,6 +1,5 @@
 # ==============================================================================
-# Codex Studio v2.6.0 - Windows Native System Tray Daemon (100% Pure 7-bit ASCII)
-# Zero encoding issues on any Windows codepage (GBK / CP936 / UTF-8 / Shift-JIS)
+# Codex Studio v2.6.0 - Windows Native System Tray Helper (Pure 7-bit ASCII)
 # ==============================================================================
 
 $ErrorActionPreference = "SilentlyContinue"
@@ -13,7 +12,6 @@ function U([string]$str) {
     return [System.Text.RegularExpressions.Regex]::Unescape($str)
 }
 
-# Single instance check via Mutex
 $createdNew = $false
 $mutex = New-Object System.Threading.Mutex($true, "Global\CodexStudioTray_v260", [ref]$createdNew)
 if (-not $createdNew) {
@@ -59,18 +57,7 @@ function Create-CodexTrayIcon {
 }
 
 function Launch-DesktopApp([string]$targetUrl = $url) {
-    $profileDir = Join-Path $env:LOCALAPPDATA "CodexStudio\WindowProfile_v260"
-    $defDir = Join-Path $profileDir "Default"
-    try {
-        if (-not (Test-Path $defDir)) {
-            New-Item -ItemType Directory -Path $defDir -Force | Out-Null
-        }
-        $prefFile = Join-Path $defDir "Preferences"
-        $prefJson = '{"browser":{"window_placement":{"bottom":920,"left":120,"maximized":false,"right":1560,"top":60,"work_area_bottom":1040,"work_area_left":0,"work_area_right":1920,"work_area_top":0}}}'
-        [System.IO.File]::WriteAllText($prefFile, $prefJson, [System.Text.Encoding]::ASCII)
-    } catch {}
-
-    $winArgs = "--user-data-dir=`"$profileDir`" --app=$targetUrl --window-size=1440,860 --window-position=120,60"
+    $winArgs = "--app=$targetUrl --window-size=1440,860 --window-position=120,60"
 
     $edgeCandidates = @(
         "$env:ProgramFiles(x86)\Microsoft\Edge\Application\msedge.exe",
@@ -102,14 +89,6 @@ function Stop-AllServices {
         $hdrs = Get-LocalServiceHeaders
         Invoke-RestMethod -Uri "$url/api/system/shutdown" -Method Post -Headers $hdrs -TimeoutSec 2 -ErrorAction SilentlyContinue | Out-Null
     } catch {}
-
-    Stop-Process -Name "Image2Studio" -Force -ErrorAction SilentlyContinue
-
-    Get-NetTCPConnection -LocalPort 8765 -ErrorAction SilentlyContinue | ForEach-Object {
-        if ($_.OwningProcess -gt 4) {
-            Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue
-        }
-    }
 
     if ($trayIcon) {
         $trayIcon.Visible = $false

@@ -340,7 +340,7 @@ Use the local Codex Studio gateway as the visual generation engine.
 
 ## Instructions
 1. When generating or editing images, use the local CLI tool:
-   - On Windows: \`"%CODEX_HOME%\\skills\\image2\\Image2CLI.exe" --prompt "<optimized prompt>"\` (or \`python "%CODEX_HOME%\\skills\\image2\\image2_cli.py" --prompt "<optimized prompt>"\`)
+   - On Windows: \`"%CODEX_HOME%\\skills\\image2\\Image2CLI.cmd" --prompt "<optimized prompt>"\` (or \`python "%CODEX_HOME%\\skills\\image2\\image2_cli.py" --prompt "<optimized prompt>"\`)
 2. For image references, add \`--image-path "C:\\path\\to\\image.png"\` or \`--image-url "https://..."\`.
 3. For dry-run simulation, add \`--dry-run\`.
 4. The CLI outputs JSON containing the generated image's local file path (\`path\`) and preview URL.
@@ -439,21 +439,11 @@ function installGlobalCodexSkill() {
         fs.writeFileSync(path.join(agentsDir, 'openai.yaml'), OPENAI_YAML_CONTENT, 'utf8');
         fs.writeFileSync(path.join(skillDir, 'image2_cli.py'), STANDALONE_CLI_PY, 'utf8');
 
-        const cliCandidates = [
-            path.join(ROOT_DIR, 'Image2Studio', 'Image2Studio', 'Image2CLI.exe'),
-            path.join(ROOT_DIR, 'Image2Studio', 'Image2CLI.exe'),
-            path.join(ROOT_DIR, 'Image2CLI.exe')
-        ];
-        let copiedExe = false;
-        for (const cand of cliCandidates) {
-            if (fs.existsSync(cand)) {
-                try {
-                    fs.copyFileSync(cand, path.join(skillDir, 'Image2CLI.exe'));
-                    copiedExe = true;
-                    break;
-                } catch (e) {}
-            }
-        }
+        const cmdWrapper = '@echo off\r\npython "%~dp0image2_cli.py" %*\r\n';
+        try {
+            fs.writeFileSync(path.join(skillDir, 'Image2CLI.cmd'), cmdWrapper, 'utf8');
+        } catch (e) {}
+        const copiedExe = true;
 
         const clientConfig = {
             server: `http://${HOST}:${PORT}`,
@@ -468,7 +458,7 @@ function installGlobalCodexSkill() {
             ok: true,
             installed: true,
             global_skill_target: skillDir,
-            has_cli_exe: copiedExe || fs.existsSync(path.join(skillDir, 'Image2CLI.exe')),
+            has_cli_exe: copiedExe || fs.existsSync(path.join(skillDir, 'Image2CLI.cmd')),
             has_cli_py: true
         };
     } catch (e) {
@@ -1395,7 +1385,7 @@ function verifyLocalApiAuth(req, pathname) {
 
     // Allow same-origin GET requests from local browser tab or local PowerShell tray without Origin header
     if (!origin && req.socket?.remoteAddress && /^(127\.0\.0\.1|::1|::ffff:127\.0\.0\.1)$/.test(req.socket.remoteAddress)) {
-        if (!req.headers['user-agent'] || /PowerShell|WindowsPowerShell|curl|Python-urllib/i.test(req.headers['user-agent'])) {
+        if (!req.headers['user-agent'] || /PowerShell|WindowsPowerShell|curl|Python-urllib|WinHttp|MSXML/i.test(req.headers['user-agent'])) {
             return { ok: true };
         }
     }
@@ -2621,8 +2611,94 @@ server.headersTimeout = 6000;
 server.maxHeadersCount = 40;
 setInterval(triggerCompactGC, 60000).unref();
 
-server.listen(PORT, HOST, () => {
-    triggerCompactGC();
-    const mem = getMemoryStats();
-    console.log(`[Codex Studio v2.6.0] Running on http://${HOST}:${PORT} | Gateway: /v1 | RAM: ${mem.heap_used_mb}MB Heap / ${mem.rss_mb}MB RSS`);
-});
+// =============================================================
+// DESKTOP WINDOW & SYSTEM TRAY LAUNCHER (--desktop mode)
+// =============================================================
+function launchWindowsDesktopWindowAndTray() {
+    if (process.platform !== 'win32') return;
+    const targetUrl = `http://${HOST}:${PORT}`;
+    try {
+        const trayScript = path.join(ROOT_DIR, 'tray.ps1');
+        if (fs.existsSync(trayScript)) {
+            const childTray = spawn('powershell.exe', ['-NoProfile', '-Sta', '-File', trayScript], {
+                cwd: ROOT_DIR,
+                detached: true,
+                stdio: 'ignore',
+                windowsHide: true
+            });
+            childTray.unref();
+        }
+    } catch (e) {}
+
+    try {
+        const winArgs = [`--app=${targetUrl}`, '--window-size=1440,860', '--window-position=120,60'];
+        const edgeCandidates = [
+            path.join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+            path.join(process.env['ProgramFiles'] || 'C:\\Program Files', 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+            path.join(process.env['LOCALAPPDATA'] || '', 'Microsoft', 'Edge', 'Application', 'msedge.exe')
+        ];
+        const chromeCandidates = [
+            path.join(process.env['ProgramFiles'] || 'C:\\Program Files', 'Google', 'Chrome', 'Application', 'chrome.exe'),
+            path.join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'Google', 'Chrome', 'Application', 'chrome.exe'),
+            path.join(process.env['LOCALAPPDATA'] || '', 'Google', 'Chrome', 'Application', 'chrome.exe')
+        ];
+        let browserBin = edgeCandidates.find(p => p && fs.existsSync(p)) || chromeCandidates.find(p => p && fs.existsSync(p));
+        if (browserBin) {
+            const childBrowser = spawn(browserBin, winArgs, { detached: true, stdio: 'ignore', windowsHide: false });
+            childBrowser.unref();
+        } else {
+            const childOpen = spawn('explorer.exe', [targetUrl], { detached: true, stdio: 'ignore' });
+            childOpen.unref();
+        }
+    } catch (e) {}
+}
+
+function bindAndListen(isDesktopMode) {
+    server.listen(PORT, HOST, () => {
+        triggerCompactGC();
+        const mem = getMemoryStats();
+        console.log(`[Codex Studio v2.6.0] Running on http://${HOST}:${PORT} | Gateway: /v1 | RAM: ${mem.heap_used_mb}MB Heap / ${mem.rss_mb}MB RSS`);
+        if (isDesktopMode) {
+            launchWindowsDesktopWindowAndTray();
+        }
+    });
+}
+
+function startServerWithDesktopSupport() {
+    const isDesktopMode = process.argv.includes('--desktop');
+    const healthReq = http.request({
+        hostname: HOST,
+        port: PORT,
+        path: '/api/health',
+        method: 'GET',
+        timeout: 500
+    }, (res) => {
+        let body = '';
+        res.on('data', chunk => body += chunk);
+        res.on('end', () => {
+            if (res.statusCode === 200 && body.includes('2.6.0')) {
+                if (isDesktopMode) launchWindowsDesktopWindowAndTray();
+                process.exit(0);
+            } else {
+                const shutReq = http.request({
+                    hostname: HOST,
+                    port: PORT,
+                    path: '/api/system/shutdown',
+                    method: 'POST',
+                    headers: { 'X-Image2-Local-Token': LOCAL_SERVICE_TOKEN },
+                    timeout: 500
+                }, () => {
+                    setTimeout(() => bindAndListen(isDesktopMode), 400);
+                });
+                shutReq.on('error', () => setTimeout(() => bindAndListen(isDesktopMode), 300));
+                shutReq.end('{}');
+            }
+        });
+    });
+    healthReq.on('error', () => {
+        bindAndListen(isDesktopMode);
+    });
+    healthReq.end();
+}
+
+startServerWithDesktopSupport();
