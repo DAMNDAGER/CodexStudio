@@ -2157,9 +2157,9 @@ const server = http.createServer(async (req, res) => {
                 const skillRes = { ok: true };
 
                 recordGatewayEvent({
-                    source: '一键满血激活',
+                    source: '自动优选模型激活',
                     message: `中转站: ${baseUrl}`,
-                    action: `⚡ 已绑定满血 ${selectedCodingModel} (${wireApi}) + 生图 ${selectedImageModel}`,
+                    action: `⚡ 已自动优选绑定 ${selectedCodingModel} (${wireApi}) + 生图 ${selectedImageModel}`,
                     status: 'success'
                 });
 
@@ -2174,7 +2174,7 @@ const server = http.createServer(async (req, res) => {
                     detected_image_count: detectedImageModels ? detectedImageModels.length : 0,
                     skill_installed: skillRes.ok,
                     memory: getMemoryStats(),
-                    message: `⚡ 一键满血激活成功！编程模型: ${selectedCodingModel} (${wireApi} 原生协议) · 生图引擎: ${selectedImageModel}`
+                    message: `⚡ 自动优选模型激活成功！编程模型: ${selectedCodingModel} (${wireApi} 原生协议) · 生图引擎: ${selectedImageModel}`
                 }, 200, req);
             }
 

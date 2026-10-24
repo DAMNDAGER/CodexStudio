@@ -2035,7 +2035,7 @@ function setupCodexHub() {
       const btn = $('btnExpressOneClickActivate');
       const origHtml = btn.innerHTML;
       btn.disabled = true;
-      btn.innerHTML = '<span>⏳ 正在嗅探满血模型并激活...</span>';
+      btn.innerHTML = '<span>⏳ 正在自动探测优选模型并激活...</span>';
       try {
         const res = await api('/api/codex/one-click-full-gpt', {
           method: 'POST',
@@ -2044,7 +2044,7 @@ function setupCodexHub() {
         });
         $('expressBaseUrl').value = res.base_url || baseUrl;
         $('lblExpressActiveModels').textContent = `主力模型: ${res.coding_model} (${res.wire_api} 原生协议) | 生图模型: ${res.image_model}`;
-        showToast(res.message || '⚡ 一键满血激活成功！', '🚀');
+        showToast(res.message || '⚡ 自动优选模型激活成功！', '🚀');
         await refreshAll();
       } catch (e) {
       } finally {

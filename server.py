@@ -2203,9 +2203,9 @@ class CodexStudioHandler(BaseHTTPRequestHandler):
             skill_res = {"ok": True}
 
             record_gateway_event(
-                source="一键满血激活",
+                source="自动优选模型激活",
                 message=f"中转站: {b_url}",
-                action=f"⚡ 已绑定满血 {sel_coding} ({wire_api}) + 生图 {sel_img}",
+                action=f"⚡ 已自动优选绑定 {sel_coding} ({wire_api}) + 生图 {sel_img}",
                 status="success"
             )
 
@@ -2220,7 +2220,7 @@ class CodexStudioHandler(BaseHTTPRequestHandler):
                 "detected_image_count": len(detected_imgs) if detected_imgs else 0,
                 "skill_installed": skill_res.get("ok", True),
                 "memory": get_memory_stats(),
-                "message": f"⚡ 一键满血激活成功！编程模型: {sel_coding} ({wire_api} 原生协议) · 生图引擎: {sel_img}"
+                "message": f"⚡ 自动优选模型激活成功！编程模型: {sel_coding} ({wire_api} 原生协议) · 生图引擎: {sel_img}"
             })
             return
 
