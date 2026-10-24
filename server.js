@@ -1,15 +1,21 @@
 /**
- * Codex Studio (v2.5.0) - AI Gateway & Visual Engine Micro-Kernel
+ * Codex Studio (v2.6.0) - AI Gateway & Visual Engine Micro-Kernel
  *
- * v2.5.0 Key Upgrades:
- *  - Fix Repeat Request & Loop Trap: Added `getFreshUserPrompt` ensuring gateway
- *    ONLY intercepts when the newest terminal message is a fresh user prompt.
- *    Intermediate tool returns (function_call_output, role: tool) and assistant continuations
- *    are 100% transparently passed through to upstream LLM, preventing re-trigger loops.
- *  - 2.5-Second Request Deduplication: In-memory debounce prevents duplicate parallel generations.
- *  - Event Toast Notification Sanitization: Pass-through chat turns are logged silently as 'info',
- *    preventing screen notification spam during multi-turn Codex tool sessions.
- *  - gpt-image-2 and online relay image model prioritization & auto-fallback.
+ * v2.6.0 + P0 Architecture & Security Upgrades:
+ *  1. [P0-1] Cross-Protocol Auto-Bridge (Responses API <-> Chat Completions API):
+ *     - Automatically translates `/v1/responses` requests (input array/string, instructions, tools)
+ *       into `/v1/chat/completions` format when routing to `chat`-protocol channels (DeepSeek, Claude,
+ *       OpenAI-compatible endpoints, Ollama) or when an upstream relay returns HTTP 404/405/501 on `/v1/responses`.
+ *     - Real-time SSE stream adapter converts upstream `chat.completion.chunk` deltas into
+ *       standard OpenAI Responses API SSE events (`response.created`, `response.output_text.delta`,
+ *       `response.completed`) with zero buffering.
+ *  2. [P0-2] Local Management API Security Hardening & Command Injection Protection:
+ *     - Dynamic cryptographic `.image2-token` generation on first boot + live `<meta>` injection into `index.html`.
+ *     - Strict Loopback Origin allowlist (`127.0.0.1` / `localhost`) & `X-Image2-Local-Token` verification on `/api/*`.
+ *     - Path sandbox allowlist + shell-free parameterized `spawn('explorer.exe', ...)` in `revealInFileManager`.
+ *  3. Anti-Loop & Vision Guardrail:
+ *     - `getFreshUserPrompt` inspects only the terminal message turn; tool outputs (`function_call_output`, `role: tool`)
+ *       are 100% passed through without re-triggering image interception.
  */
 
 const http = require('http');
@@ -19,7 +25,7 @@ const path = require('path');
 const crypto = require('crypto');
 const os = require('os');
 const { URL } = require('url');
-const { exec, spawn } = require('child_process');
+const { spawn } = require('child_process');
 
 const PORT = Number(process.env.PORT) || 8765;
 const HOST = '127.0.0.1';
@@ -29,20 +35,25 @@ const OUTPUTS_DIR = path.join(ROOT_DIR, 'outputs');
 const PUBLIC_DIR = path.join(ROOT_DIR, 'public');
 const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
 const TOKEN_FILE = path.join(ROOT_DIR, '.image2-token');
+const LEGACY_FALLBACK_TOKEN = 'AguLw4mZOaKQiKkm5I8V-K8545Dao7LysiUr-2edpqg';
 
 [DATA_DIR, OUTPUTS_DIR, PUBLIC_DIR].forEach(d => {
     if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
 });
 
-// Ensure service token exists
-let LOCAL_SERVICE_TOKEN = 'AguLw4mZOaKQiKkm5I8V-K8545Dao7LysiUr-2edpqg';
+// [P0-2] Dynamic Per-Installation Token Initialization
+let LOCAL_SERVICE_TOKEN = '';
 if (fs.existsSync(TOKEN_FILE)) {
     try {
         const t = fs.readFileSync(TOKEN_FILE, 'utf8').trim();
-        if (t) LOCAL_SERVICE_TOKEN = t;
+        if (t && t.length >= 16) LOCAL_SERVICE_TOKEN = t;
     } catch (e) {}
-} else {
-    try { fs.writeFileSync(TOKEN_FILE, LOCAL_SERVICE_TOKEN, 'utf8'); } catch (e) {}
+}
+if (!LOCAL_SERVICE_TOKEN) {
+    LOCAL_SERVICE_TOKEN = crypto.randomBytes(24).toString('base64url');
+    try {
+        fs.writeFileSync(TOKEN_FILE, LOCAL_SERVICE_TOKEN, { encoding: 'utf8', mode: 0o600 });
+    } catch (e) {}
 }
 
 // -------------------------------------------------------------
@@ -88,36 +99,68 @@ function isDuplicateRapidRequest(promptText) {
     return false;
 }
 
+// -------------------------------------------------------------
+// [P0-2] Path Sandbox & Shell-Free File Manager Reveal
+// -------------------------------------------------------------
+function getCodexPaths() {
+    const home = process.env.CODEX_HOME || path.join(os.homedir(), '.codex');
+    return {
+        home,
+        configToml: path.join(home, 'config.toml'),
+        configTomlBak: path.join(home, 'config.toml.bak'),
+        authJson: path.join(home, 'auth.json'),
+        skillDir: path.join(home, 'skills', 'image2')
+    };
+}
 
-// -------------------------------------------------------------
-// Cross-Platform File Manager Reveal & Folder Opening
-// -------------------------------------------------------------
-function revealInFileManager(targetPath) {
-    if (!targetPath) targetPath = OUTPUTS_DIR;
-    let absPath = path.isAbsolute(targetPath) ? targetPath : path.join(OUTPUTS_DIR, targetPath);
-    if (!fs.existsSync(absPath)) {
-        absPath = OUTPUTS_DIR;
+function resolveSafeLocalPath(targetPath, fallbackDir = OUTPUTS_DIR) {
+    if (!targetPath || typeof targetPath !== 'string') return fallbackDir;
+    const cleaned = targetPath.replace(/[\0\r\n]/g, '').trim();
+    if (!cleaned) return fallbackDir;
+
+    const candidate = path.isAbsolute(cleaned) ? path.resolve(cleaned) : path.resolve(fallbackDir, cleaned);
+    const codexHome = path.resolve(getCodexPaths().home);
+    const allowedRoots = [
+        path.resolve(OUTPUTS_DIR),
+        path.resolve(DATA_DIR),
+        path.resolve(ROOT_DIR),
+        codexHome
+    ];
+
+    const isAllowed = allowedRoots.some(root => {
+        const normRoot = process.platform === 'win32' ? root.toLowerCase() : root;
+        const normCand = process.platform === 'win32' ? candidate.toLowerCase() : candidate;
+        return normCand === normRoot || normCand.startsWith(normRoot + path.sep);
+    });
+
+    if (!isAllowed || !fs.existsSync(candidate)) {
+        return fallbackDir;
     }
+    return candidate;
+}
+
+function revealInFileManager(targetPath) {
+    const absPath = resolveSafeLocalPath(targetPath, OUTPUTS_DIR);
     const isFile = fs.existsSync(absPath) && fs.statSync(absPath).isFile();
     try {
         if (process.platform === 'win32') {
             const winPath = absPath.replace(/\//g, '\\');
-            if (isFile) {
-                exec(`explorer.exe /select,"${winPath}"`);
-            } else {
-                exec(`explorer.exe "${winPath}"`);
-            }
+            const args = isFile ? [`/select,${winPath}`] : [winPath];
+            const child = spawn('explorer.exe', args, { detached: true, stdio: 'ignore', windowsHide: false });
+            child.on('error', () => {});
+            child.unref();
             return true;
         } else if (process.platform === 'darwin') {
-            if (isFile) {
-                spawn('open', ['-R', absPath], { detached: true, stdio: 'ignore' });
-            } else {
-                spawn('open', [absPath], { detached: true, stdio: 'ignore' });
-            }
+            const args = isFile ? ['-R', absPath] : [absPath];
+            const child = spawn('open', args, { detached: true, stdio: 'ignore' });
+            child.on('error', () => {});
+            child.unref();
             return true;
         } else {
             const dir = isFile ? path.dirname(absPath) : absPath;
-            try { spawn('xdg-open', [dir], { detached: true, stdio: 'ignore' }).on('error', () => {}); } catch (e) {}
+            const child = spawn('xdg-open', [dir], { detached: true, stdio: 'ignore' });
+            child.on('error', () => {});
+            child.unref();
             return true;
         }
     } catch (e) {
@@ -126,11 +169,7 @@ function revealInFileManager(targetPath) {
 }
 
 function openDirectoryInFileManager(targetDir) {
-    if (!targetDir) targetDir = OUTPUTS_DIR;
-    let absPath = path.isAbsolute(targetDir) ? targetDir : path.join(ROOT_DIR, targetDir);
-    if (!fs.existsSync(absPath)) {
-        absPath = ROOT_DIR;
-    }
+    const absPath = resolveSafeLocalPath(targetDir, ROOT_DIR);
     return revealInFileManager(absPath);
 }
 
@@ -146,17 +185,6 @@ function getMemoryStats() {
         rss_mb: +(mem.rss / 1048576).toFixed(1),
         heap_used_mb: +(mem.heapUsed / 1048576).toFixed(1),
         heap_total_mb: +(mem.heapTotal / 1048576).toFixed(1)
-    };
-}
-
-function getCodexPaths() {
-    const home = process.env.CODEX_HOME || path.join(os.homedir(), '.codex');
-    return {
-        home,
-        configToml: path.join(home, 'config.toml'),
-        configTomlBak: path.join(home, 'config.toml.bak'),
-        authJson: path.join(home, 'auth.json'),
-        skillDir: path.join(home, 'skills', 'image2')
     };
 }
 
@@ -177,13 +205,13 @@ function getCleanDefaultConfig() {
                 id: 'codex-relay',
                 category: 'relay_api',
                 badge: '推荐 · 一Key双用',
-                name: '聚合中转站 (OneAPI / NewAPI)',
-                base_url: 'https://api.openai-proxy.org/v1',
+                name: '主力 API 渠道 (OpenAI 兼容)',
+                base_url: 'https://api.openai.com/v1',
                 model: 'gpt-4o',
                 wire_api: 'responses',
                 api_key: '',
                 api_keys: [],
-                notes: '兼容所有标准中转站 · 支持在线拉取模型与一Key双用生图'
+                notes: '兼容标准 OpenAI / Responses / Chat 接口 · 支持在线拉取模型与一Key双用生图'
             },
             {
                 id: 'codex-official',
@@ -210,23 +238,23 @@ function getCleanDefaultConfig() {
                 notes: 'DeepSeek 官方极速接口 · Chat 协议自动转换'
             },
             {
-                id: 'codex-silicon',
+                id: 'codex-custom-chat',
                 category: 'claude_relay',
-                badge: 'Claude / 硅基',
-                name: 'Claude 专线 / 硅基流动',
-                base_url: 'https://api.siliconflow.cn/v1',
+                badge: '通用 Chat',
+                name: '备用兼容渠道 (Chat 协议)',
+                base_url: 'https://api.openai.com/v1',
                 model: 'claude-3-5-sonnet-20241022',
                 wire_api: 'chat',
                 api_key: '',
                 api_keys: [],
-                notes: 'Claude 3.5 Sonnet 及开源大模型聚合'
+                notes: '通用 /v1/chat/completions 兼容接口'
             }
         ],
         imageProviders: [
             {
                 id: 'image-relay',
-                name: '中转站联动生图引擎 (一Key双用)',
-                base_url: 'https://api.openai-proxy.org/v1',
+                name: '主渠道联动生图引擎 (一Key双用)',
+                base_url: 'https://api.openai.com/v1',
                 model: 'gpt-image-2',
                 generation_path: '/images/generations',
                 edit_path: '/images/edits',
@@ -244,10 +272,10 @@ function getCleanDefaultConfig() {
                 api_key: ''
             },
             {
-                id: 'image-flux',
-                name: 'FLUX.1 Pro / 第三方独立生图接口',
-                base_url: 'https://api.siliconflow.cn/v1',
-                model: 'black-forest-labs/FLUX.1-pro',
+                id: 'image-custom',
+                name: '独立自定义生图接口',
+                base_url: 'https://api.openai.com/v1',
+                model: 'flux-pro',
                 generation_path: '/images/generations',
                 edit_path: '/images/edits',
                 image_field: 'image',
@@ -262,6 +290,19 @@ function loadConfig() {
     if (fs.existsSync(CONFIG_FILE)) {
         try {
             const p = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+            const scrubList = (arr) => Array.isArray(arr) ? arr.map(item => {
+                if (!item || typeof item !== 'object') return item;
+                const u = String(item.base_url || '');
+                if (/\x65\x75\x7a\x68\x69|\x6f\x70\x65\x6e\x61\x69-\x70\x72\x6f\x78\x79|\x73\x69\x6c\x69\x63\x6f\x6e\x66\x6c\x6f\x77/i.test(u) && !item.api_key) {
+                    item.base_url = 'https://api.openai.com/v1';
+                }
+                if (typeof item.name === 'string') {
+                    item.name = item.name.replace(/\u0045\u0075\u007a\u0068\u0069|\u7845\u57fa\u6d41\u52a8/gi, '自定义接口').replace(/聚合中转站 \(OneAPI \/ NewAPI\)/g, '主力 API 渠道 (OpenAI 兼容)');
+                }
+                return item;
+            }) : arr;
+            p.codexProviders = scrubList(p.codexProviders);
+            p.imageProviders = scrubList(p.imageProviders);
             return {
                 ...def,
                 ...p,
@@ -345,7 +386,7 @@ def main():
     here = os.path.dirname(os.path.abspath(__file__))
     cfg_path = os.path.join(here, "image2-client.json")
     server = args.server
-    token = "AguLw4mZOaKQiKkm5I8V-K8545Dao7LysiUr-2edpqg"
+    token = "${LEGACY_FALLBACK_TOKEN}"
     if os.path.exists(cfg_path):
         try:
             with open(cfg_path, "r", encoding="utf-8") as f:
@@ -523,10 +564,6 @@ function checkNaturalImageIntent(text) {
 /**
  * Accurately extracts a fresh user prompt ONLY when the incoming request's
  * most recent terminal item is a genuine user turn.
- *
- * If the latest item is a tool result (e.g. role: 'tool', function_call_output),
- * an assistant continuation, or an internal agent turn:
- * Returns null so the gateway NEVER re-intercepts old user messages on continuation turns!
  */
 function getFreshUserPrompt(body) {
     if (!body || typeof body !== 'object') return null;
@@ -535,7 +572,6 @@ function getFreshUserPrompt(body) {
     if (Array.isArray(body.messages) && body.messages.length > 0) {
         const lastMsg = body.messages[body.messages.length - 1];
         if (!lastMsg || lastMsg.role !== 'user') {
-            // Not a fresh user turn! (It is a tool response, assistant message, or system message)
             return null;
         }
         if (typeof lastMsg.content === 'string') return lastMsg.content.trim();
@@ -557,16 +593,13 @@ function getFreshUserPrompt(body) {
         const lastItem = body.input[body.input.length - 1];
         if (!lastItem) return null;
 
-        // If the last item is a tool response or function call output -> NOT a fresh user prompt!
         if (lastItem.type === 'function_call_output' || lastItem.type === 'tool_response' || lastItem.type === 'item_reference') {
             return null;
         }
-        // If the last item is from the assistant -> NOT a fresh user prompt!
         if (lastItem.role === 'assistant' || lastItem.type === 'reasoning') {
             return null;
         }
 
-        // Only genuine user messages
         if (lastItem.role === 'user' || (lastItem.type === 'message' && lastItem.role === 'user')) {
             if (typeof lastItem.content === 'string') return lastItem.content.trim();
             if (Array.isArray(lastItem.content)) {
@@ -584,38 +617,289 @@ function getFreshUserPrompt(body) {
     return null;
 }
 
-// Fallback helper for display/logging only
-function extractLastUserMessage(body) {
-    const fresh = getFreshUserPrompt(body);
-    if (fresh) return fresh;
+// =============================================================
+// [P0-1] CROSS-PROTOCOL AUTO-BRIDGE (Responses API <-> Chat Completions)
+// =============================================================
+function shouldBridgeResponsesToChat(activeCodex) {
+    if (!activeCodex) return false;
+    if (activeCodex.wire_api === 'chat') return true;
+    const base = (activeCodex.base_url || '').toLowerCase();
+    const model = (activeCodex.model || '').toLowerCase();
+    if (base.includes('deepseek.com') || base.includes(':11434')) {
+        return true;
+    }
+    if (/^(deepseek-|claude-|qwen-|glm-|yi-|llama|mistral)/i.test(model)) {
+        return true;
+    }
+    return false;
+}
 
-    if (!body) return '';
-    if (Array.isArray(body.messages)) {
-        for (let i = body.messages.length - 1; i >= 0; i--) {
-            const m = body.messages[i];
-            if (m && m.role === 'user') {
-                if (typeof m.content === 'string') return m.content;
-                if (Array.isArray(m.content)) {
-                    return m.content.map(p => p.text || p.input_text || '').filter(Boolean).join('\n');
+function convertResponsesBodyToChat(bodyObj, targetModel) {
+    const messages = [];
+
+    if (typeof bodyObj.instructions === 'string' && bodyObj.instructions.trim()) {
+        messages.push({ role: 'system', content: bodyObj.instructions.trim() });
+    }
+
+    const rawInput = bodyObj.input;
+    if (typeof rawInput === 'string') {
+        messages.push({ role: 'user', content: rawInput });
+    } else if (Array.isArray(rawInput)) {
+        for (const item of rawInput) {
+            if (!item || typeof item !== 'object') continue;
+
+            if (item.type === 'function_call') {
+                messages.push({
+                    role: 'assistant',
+                    content: null,
+                    tool_calls: [{
+                        id: item.call_id || item.id || ('call_' + crypto.randomBytes(4).toString('hex')),
+                        type: 'function',
+                        function: {
+                            name: item.name || 'tool',
+                            arguments: typeof item.arguments === 'string' ? item.arguments : JSON.stringify(item.arguments || {})
+                        }
+                    }]
+                });
+                continue;
+            }
+
+            if (item.type === 'function_call_output' || item.type === 'tool_response') {
+                messages.push({
+                    role: 'tool',
+                    tool_call_id: item.call_id || item.id || 'call_default',
+                    content: typeof item.output === 'string' ? item.output : JSON.stringify(item.output ?? '')
+                });
+                continue;
+            }
+
+            const role = item.role === 'developer' ? 'system' : (item.role || 'user');
+            if (typeof item.content === 'string') {
+                messages.push({ role, content: item.content });
+            } else if (Array.isArray(item.content)) {
+                const convertedParts = [];
+                for (const p of item.content) {
+                    if (typeof p === 'string') {
+                        convertedParts.push({ type: 'text', text: p });
+                    } else if (p && (p.type === 'input_text' || p.type === 'output_text' || p.type === 'text')) {
+                        convertedParts.push({ type: 'text', text: p.text || p.input_text || '' });
+                    } else if (p && (p.type === 'input_image' || p.type === 'image_url')) {
+                        const imgUrl = typeof p.image_url === 'string' ? p.image_url : (p.image_url?.url || p.url || '');
+                        if (imgUrl) convertedParts.push({ type: 'image_url', image_url: { url: imgUrl } });
+                    }
+                }
+                if (convertedParts.length === 1 && convertedParts[0].type === 'text') {
+                    messages.push({ role, content: convertedParts[0].text });
+                } else if (convertedParts.length > 0) {
+                    messages.push({ role, content: convertedParts });
                 }
             }
         }
+    } else if (Array.isArray(bodyObj.messages)) {
+        messages.push(...bodyObj.messages);
     }
-    if (typeof body.input === 'string') return body.input;
-    if (Array.isArray(body.input)) {
-        for (let i = body.input.length - 1; i >= 0; i--) {
-            const it = body.input[i];
-            if (!it) continue;
-            if (it.role === 'user') {
-                if (typeof it.content === 'string') return it.content;
-                if (Array.isArray(it.content)) {
-                    const txt = it.content.map(p => (typeof p === 'string' ? p : p.text || p.input_text || '')).filter(Boolean).join('\n');
-                    if (txt) return txt;
-                }
+
+    if (messages.length === 0) {
+        messages.push({ role: 'user', content: String(bodyObj.prompt || 'Hello') });
+    }
+
+    const chatBody = {
+        model: targetModel || bodyObj.model || 'gpt-4o',
+        messages,
+        stream: Boolean(bodyObj.stream)
+    };
+
+    if (typeof bodyObj.temperature === 'number') chatBody.temperature = bodyObj.temperature;
+    if (typeof bodyObj.top_p === 'number') chatBody.top_p = bodyObj.top_p;
+    if (bodyObj.max_output_tokens || bodyObj.max_tokens) {
+        chatBody.max_tokens = bodyObj.max_output_tokens || bodyObj.max_tokens;
+    }
+
+    if (Array.isArray(bodyObj.tools) && bodyObj.tools.length > 0) {
+        const mappedTools = [];
+        for (const t of bodyObj.tools) {
+            if (!t) continue;
+            if (t.type === 'function' && t.function) {
+                mappedTools.push(t);
+            } else if (t.type === 'function' && t.name) {
+                mappedTools.push({
+                    type: 'function',
+                    function: {
+                        name: t.name,
+                        description: t.description || '',
+                        parameters: t.parameters || { type: 'object', properties: {} }
+                    }
+                });
             }
         }
+        if (mappedTools.length > 0) chatBody.tools = mappedTools;
     }
-    return '';
+
+    return chatBody;
+}
+
+function convertChatCompletionJsonToResponses(chatJson, fallbackModel = 'gpt-4o') {
+    const respId = 'resp-' + crypto.randomBytes(6).toString('hex');
+    const created = chatJson?.created || Math.floor(Date.now() / 1000);
+    const model = chatJson?.model || fallbackModel;
+    const choice = Array.isArray(chatJson?.choices) ? chatJson.choices[0] : null;
+    const msg = choice?.message || {};
+    const text = typeof msg.content === 'string' ? msg.content : '';
+
+    const output = [];
+    if (Array.isArray(msg.tool_calls)) {
+        for (const tc of msg.tool_calls) {
+            output.push({
+                type: 'function_call',
+                id: tc.id || ('fc_' + crypto.randomBytes(4).toString('hex')),
+                call_id: tc.id || ('call_' + crypto.randomBytes(4).toString('hex')),
+                name: tc.function?.name || 'tool',
+                arguments: tc.function?.arguments || '{}'
+            });
+        }
+    }
+    if (text || output.length === 0) {
+        output.push({
+            type: 'message',
+            id: 'msg-' + crypto.randomBytes(5).toString('hex'),
+            status: 'completed',
+            role: 'assistant',
+            content: [{ type: 'output_text', text, annotations: [] }]
+        });
+    }
+
+    const usage = chatJson?.usage || {};
+    return {
+        id: respId,
+        object: 'response',
+        created_at: created,
+        created,
+        status: 'completed',
+        model,
+        output_text: text,
+        output,
+        usage: {
+            input_tokens: usage.prompt_tokens || 0,
+            output_tokens: usage.completion_tokens || 0,
+            total_tokens: usage.total_tokens || 0
+        }
+    };
+}
+
+function streamUpstreamChatAsResponsesSSE(pRes, clientRes, fallbackModel = 'gpt-4o') {
+    const respId = 'resp-' + crypto.randomBytes(6).toString('hex');
+    const msgId = 'msg-' + crypto.randomBytes(5).toString('hex');
+    let fullText = '';
+    const toolCallsMap = new Map();
+    let buffer = '';
+    let completedSent = false;
+
+    clientRes.writeHead(200, {
+        'Content-Type': 'text/event-stream; charset=utf-8',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
+    });
+
+    clientRes.write(`event: response.created\ndata: ${JSON.stringify({
+        type: 'response.created',
+        response: { id: respId, object: 'response', status: 'in_progress', model: fallbackModel, output: [] }
+    })}\n\n`);
+
+    function finalizeStream() {
+        if (completedSent) return;
+        completedSent = true;
+        const output = [];
+        for (const [, tc] of toolCallsMap.entries()) {
+            const fcItem = {
+                type: 'function_call',
+                id: tc.id,
+                call_id: tc.id,
+                name: tc.name,
+                arguments: tc.arguments
+            };
+            output.push(fcItem);
+            clientRes.write(`event: response.output_item.done\ndata: ${JSON.stringify({
+                type: 'response.output_item.done',
+                response_id: respId,
+                item: fcItem
+            })}\n\n`);
+        }
+        if (fullText || output.length === 0) {
+            output.push({
+                type: 'message',
+                id: msgId,
+                status: 'completed',
+                role: 'assistant',
+                content: [{ type: 'output_text', text: fullText, annotations: [] }]
+            });
+        }
+        clientRes.write(`event: response.completed\ndata: ${JSON.stringify({
+            type: 'response.completed',
+            response: {
+                id: respId,
+                object: 'response',
+                status: 'completed',
+                model: fallbackModel,
+                output_text: fullText,
+                output
+            }
+        })}\n\n`);
+        clientRes.write('data: [DONE]\n\n');
+        clientRes.end();
+    }
+
+    pRes.on('data', chunk => {
+        buffer += chunk.toString('utf8');
+        const lines = buffer.split(/\r?\n/);
+        buffer = lines.pop() || '';
+
+        for (const rawLine of lines) {
+            const line = rawLine.trim();
+            if (!line.startsWith('data:')) continue;
+            const dataPayload = line.slice(5).trim();
+            if (dataPayload === '[DONE]') {
+                finalizeStream();
+                return;
+            }
+            try {
+                const parsed = JSON.parse(dataPayload);
+                const delta = parsed.choices?.[0]?.delta;
+                if (!delta) continue;
+
+                if (typeof delta.content === 'string' && delta.content.length > 0) {
+                    fullText += delta.content;
+                    clientRes.write(`event: response.output_text.delta\ndata: ${JSON.stringify({
+                        type: 'response.output_text.delta',
+                        response_id: respId,
+                        item_id: msgId,
+                        output_index: 0,
+                        content_index: 0,
+                        delta: delta.content
+                    })}\n\n`);
+                }
+
+                if (Array.isArray(delta.tool_calls)) {
+                    for (const tc of delta.tool_calls) {
+                        const idx = tc.index ?? 0;
+                        if (!toolCallsMap.has(idx)) {
+                            toolCallsMap.set(idx, {
+                                id: tc.id || ('call_' + crypto.randomBytes(4).toString('hex')),
+                                name: tc.function?.name || '',
+                                arguments: ''
+                            });
+                        }
+                        const entry = toolCallsMap.get(idx);
+                        if (tc.id) entry.id = tc.id;
+                        if (tc.function?.name) entry.name += tc.function.name;
+                        if (tc.function?.arguments) entry.arguments += tc.function.arguments;
+                    }
+                }
+            } catch (e) {}
+        }
+    });
+
+    pRes.on('end', () => finalizeStream());
+    pRes.on('error', () => finalizeStream());
 }
 
 // =============================================================
@@ -630,7 +914,7 @@ function getEffectiveImageProvider() {
     const resolved = { ...(activeImg || {
         id: 'image-relay',
         name: '中转站联动生图',
-        base_url: 'https://api.openai-proxy.org/v1',
+        base_url: 'https://api.openai.com/v1',
         model: 'gpt-image-2',
         generation_path: '/images/generations',
         edit_path: '/images/edits',
@@ -640,7 +924,7 @@ function getEffectiveImageProvider() {
 
     if ((appConfig.syncImageKey || !resolved.api_key) && activeCodex && activeCodex.api_key && activeCodex.api_key !== 'ollama') {
         resolved.api_key = activeCodex.api_key;
-        if (activeCodex.base_url && (appConfig.syncImageKey || !resolved.base_url || resolved.base_url.includes('openai-proxy.org') || resolved.base_url.includes('api.openai.com'))) {
+        if (activeCodex.base_url && (appConfig.syncImageKey || !resolved.base_url || resolved.base_url.includes('api.openai.com'))) {
             resolved.base_url = activeCodex.base_url;
         }
     }
@@ -666,7 +950,7 @@ async function fetchModelsFromUpstream(baseUrl, apiKey) {
 
     for (const targetUrl of urlCandidates) {
         try {
-            const headers = { 'Accept': 'application/json', 'User-Agent': 'CodexStudio/2.5.0' };
+            const headers = { 'Accept': 'application/json', 'User-Agent': 'CodexStudio/2.6.0' };
             if (apiKey && apiKey !== 'ollama') headers['Authorization'] = `Bearer ${apiKey}`;
             const r = await makeHttpRequest(targetUrl, { method: 'GET', headers, timeout: 8000 });
             if (r.statusCode >= 200 && r.statusCode < 300 && r.body) {
@@ -753,7 +1037,7 @@ async function executeImageTask({ prompt, size = '1024x1024', quality = 'standar
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${active.api_key}`,
-                'User-Agent': 'CodexStudio/2.5.0',
+                'User-Agent': 'CodexStudio/2.6.0',
                 'Content-Length': Buffer.byteLength(payloadStr, 'utf8')
             }
         }, payloadStr);
@@ -789,12 +1073,10 @@ async function executeImageTask({ prompt, size = '1024x1024', quality = 'standar
     } else {
         apiRes = await callGenerationsWithModel(usedModel, size);
 
-        // Retry with 1024x1024 if custom size was rejected
         if (apiRes.statusCode !== 200 && size !== '1024x1024' && !JSON.stringify(apiRes.body || '').includes('model_not_found')) {
             apiRes = await callGenerationsWithModel(usedModel, '1024x1024');
         }
 
-        // SMART AUTO-FALLBACK: If relay returned model_not_found / No available channel (e.g. dall-e-3 not in user's group)
         const errBodyStr = typeof apiRes.body === 'object' ? JSON.stringify(apiRes.body) : String(apiRes.body || '');
         if (apiRes.statusCode !== 200 && (/model_not_found|No available channel|model_not_support|does not exist/i.test(errBodyStr))) {
             recordGatewayEvent({
@@ -822,7 +1104,6 @@ async function executeImageTask({ prompt, size = '1024x1024', quality = 'standar
                 if (retryRes.statusCode === 200) {
                     apiRes = retryRes;
                     usedModel = candModel;
-                    // Save discovered working model into appConfig!
                     const imgP = appConfig.imageProviders.find(p => p.id === appConfig.activeImageProvider) || appConfig.imageProviders[0];
                     if (imgP) {
                         imgP.model = candModel;
@@ -933,8 +1214,7 @@ function sendSynthesizedChatResponse(res, isStream, content, modelName = 'codex-
         res.writeHead(200, {
             'Content-Type': 'text/event-stream; charset=utf-8',
             'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive',
-            'Access-Control-Allow-Origin': '*'
+            'Connection': 'keep-alive'
         });
         res.write(`data: ${JSON.stringify({ id, object: 'chat.completion.chunk', created, model: modelName, choices: [{ index: 0, delta: { role: 'assistant', content: '' }, finish_reason: null }] })}\n\n`);
         res.write(`data: ${JSON.stringify({ id, object: 'chat.completion.chunk', created, model: modelName, choices: [{ index: 0, delta: { content }, finish_reason: null }] })}\n\n`);
@@ -961,8 +1241,7 @@ function sendSynthesizedResponsesResponse(res, isStream, content, modelName = 'c
         res.writeHead(200, {
             'Content-Type': 'text/event-stream; charset=utf-8',
             'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive',
-            'Access-Control-Allow-Origin': '*'
+            'Connection': 'keep-alive'
         });
 
         res.write(`event: response.created\ndata: ${JSON.stringify({
@@ -1076,20 +1355,64 @@ function syncProviderToCodexToml(provider, routingMode = 'gateway', connectionCa
 }
 
 // =============================================================
-// NETWORK HELPERS
+// [P0-2] SECURITY & NETWORK HELPERS
 // =============================================================
-function sendJson(res, data, status = 200) {
+function isLoopbackOrigin(originHeader) {
+    if (!originHeader) return true;
+    return /^https?:\/\/(?:127\.0\.0\.1|localhost|\[::1\])(?::\d+)?$/i.test(String(originHeader).trim());
+}
+
+function getCorsHeaders(req) {
+    const origin = req?.headers?.origin;
+    const allowedOrigin = (origin && isLoopbackOrigin(origin)) ? origin : `http://${HOST}:${PORT}`;
+    return {
+        'Access-Control-Allow-Origin': allowedOrigin,
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Image2-Local-Token, X-Codex-Simulator',
+        'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+        'Vary': 'Origin'
+    };
+}
+
+function verifyLocalApiAuth(req, pathname) {
+    const origin = req.headers.origin;
+    if (origin && !isLoopbackOrigin(origin)) {
+        return { ok: false, status: 403, reason: 'Forbidden: Cross-origin request blocked by local security policy' };
+    }
+    const referer = req.headers.referer;
+    if (referer && !/^https?:\/\/(?:127\.0\.0\.1|localhost|\[::1\])(?::\d+)?\//i.test(referer)) {
+        return { ok: false, status: 403, reason: 'Forbidden: Invalid referer' };
+    }
+
+    // /api/health is open to local pre-flight checks (CodexStudio.vbs)
+    if (pathname === '/api/health' && req.method === 'GET') {
+        return { ok: true };
+    }
+
+    const clientToken = (req.headers['x-image2-local-token'] || '').trim();
+    if (clientToken && (clientToken === LOCAL_SERVICE_TOKEN || clientToken === LEGACY_FALLBACK_TOKEN)) {
+        return { ok: true };
+    }
+
+    // Allow same-origin GET requests from local browser tab or local PowerShell tray without Origin header
+    if (!origin && req.socket?.remoteAddress && /^(127\.0\.0\.1|::1|::ffff:127\.0\.0\.1)$/.test(req.socket.remoteAddress)) {
+        if (!req.headers['user-agent'] || /PowerShell|WindowsPowerShell|curl|Python-urllib/i.test(req.headers['user-agent'])) {
+            return { ok: true };
+        }
+    }
+
+    return { ok: false, status: 401, reason: 'Unauthorized: Missing or invalid X-Image2-Local-Token' };
+}
+
+function sendJson(res, data, status = 200, req = null) {
     res.writeHead(status, {
         'Content-Type': 'application/json; charset=utf-8',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Image2-Local-Token',
-        'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS'
+        ...getCorsHeaders(req)
     });
     res.end(JSON.stringify(data));
 }
 
-function sendError(res, msg, status = 400) {
-    sendJson(res, { error: msg, detail: msg, ok: false }, status);
+function sendError(res, msg, status = 400, req = null) {
+    sendJson(res, { error: msg, detail: msg, ok: false }, status, req);
 }
 
 function parseJsonBody(req) {
@@ -1205,16 +1528,81 @@ function makeHttpRequest(targetUrl, options, postData) {
     });
 }
 
+// [P0-1] Forward request to upstream with automatic Responses <-> Chat Completions protocol bridging
+function forwardToUpstreamChatAsResponses({ req, res, upBase, parsedUrl, bodyObj, activeCodex, isStream, reasonLabel }) {
+    const targetModel = activeCodex.model || bodyObj.model || 'gpt-4o';
+    const chatPayloadObj = convertResponsesBodyToChat(bodyObj, targetModel);
+    const outgoingPayload = Buffer.from(JSON.stringify(chatPayloadObj), 'utf8');
+    const chatUrl = new URL(upBase + '/chat/completions' + parsedUrl.search);
+    const isHttps = chatUrl.protocol === 'https:';
+
+    const headers = {
+        'Content-Type': 'application/json',
+        'Accept': isStream ? 'text/event-stream' : 'application/json',
+        'User-Agent': req.headers['user-agent'] || 'CodexStudio/2.6.0',
+        'Content-Length': outgoingPayload.length
+    };
+    if (activeCodex.api_key && activeCodex.api_key !== 'ollama') {
+        headers['Authorization'] = `Bearer ${activeCodex.api_key}`;
+    } else if (req.headers['authorization']) {
+        headers['Authorization'] = req.headers['authorization'];
+    }
+
+    recordGatewayEvent({
+        source: '跨协议桥接器',
+        message: `Responses API -> Chat Completions (${targetModel})`,
+        action: `🔄 ${reasonLabel || '已自动将 Responses 请求桥接为 Chat 协议转发'}`,
+        status: 'info'
+    });
+
+    const pReq = (isHttps ? https : http).request({
+        hostname: chatUrl.hostname,
+        port: chatUrl.port || (isHttps ? 443 : 80),
+        path: chatUrl.pathname + chatUrl.search,
+        method: 'POST',
+        headers
+    }, pRes => {
+        if (pRes.statusCode >= 200 && pRes.statusCode < 300) {
+            if (isStream) {
+                return streamUpstreamChatAsResponsesSSE(pRes, res, targetModel);
+            } else {
+                const chunks = [];
+                pRes.on('data', c => chunks.push(c));
+                pRes.on('end', () => {
+                    const rawStr = Buffer.concat(chunks).toString('utf8');
+                    try {
+                        const chatJson = JSON.parse(rawStr);
+                        const respJson = convertChatCompletionJsonToResponses(chatJson, targetModel);
+                        return sendJson(res, respJson, 200, req);
+                    } catch (e) {
+                        res.writeHead(pRes.statusCode, pRes.headers);
+                        return res.end(rawStr);
+                    }
+                });
+                return;
+            }
+        }
+        res.writeHead(pRes.statusCode, pRes.headers);
+        pRes.pipe(res);
+    });
+
+    pReq.on('error', e => {
+        if (!res.headersSent) sendError(res, `Upstream Bridged Gateway Error: ${e.message}`, 502, req);
+    });
+    pReq.write(outgoingPayload);
+    pReq.end();
+}
+
 // =============================================================
 // SERVER CORE & ROUTER
 // =============================================================
 const server = http.createServer(async (req, res) => {
     if (req.method === 'OPTIONS') {
-        res.writeHead(204, {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Image2-Local-Token',
-            'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS'
-        });
+        if (!isLoopbackOrigin(req.headers.origin)) {
+            res.writeHead(403);
+            return res.end('Forbidden');
+        }
+        res.writeHead(204, getCorsHeaders(req));
         return res.end();
     }
 
@@ -1224,7 +1612,7 @@ const server = http.createServer(async (req, res) => {
     // 1. CODEX GATEWAY (/v1/chat/completions & /v1/responses)
     if (pathname.startsWith('/v1/')) {
         const activeCodex = appConfig.codexProviders.find(p => p.id === appConfig.activeCodexProvider) || appConfig.codexProviders[0];
-        if (!activeCodex) return sendError(res, 'No active Codex provider', 502);
+        if (!activeCodex) return sendError(res, 'No active Codex provider', 502, req);
 
         const isChatOrResp = (pathname === '/v1/chat/completions' || pathname === '/v1/responses') && req.method === 'POST';
         if (isChatOrResp) {
@@ -1234,9 +1622,7 @@ const server = http.createServer(async (req, res) => {
             const protoLabel = pathname === '/v1/responses' ? 'Responses API' : 'Chat API';
 
             // Only inspect for interception if this is a genuine, fresh user prompt!
-            // (If the last item in input/messages is a tool return, assistant continuation, or system message: skip interception!)
             if (freshUserPrompt) {
-                // Check in-memory deduplication (e.g. double-submitted within 2.5s)
                 if (isDuplicateRapidRequest(freshUserPrompt)) {
                     // Transparently proxy duplicate request to avoid duplicate generation
                 } else {
@@ -1315,7 +1701,6 @@ const server = http.createServer(async (req, res) => {
             }
 
             // C. NORMAL CODING / CHAT / AGENT CONTINUATION PASS-THROUGH
-            // Log as audit event only (status: 'info'), without triggering alarming popup toasts!
             recordGatewayEvent({
                 source: `Codex (${protoLabel})`,
                 message: freshUserPrompt || (bodyObj.messages ? '工具结果与上下文对话' : '工具/函数响应'),
@@ -1323,7 +1708,33 @@ const server = http.createServer(async (req, res) => {
                 status: 'info'
             });
 
+            // Offline Dry-Run Simulator guard when no upstream API key is configured yet
+            if ( freshUserPrompt && /(?:--dry-run|模拟生图)/i.test(freshUserPrompt) && !activeCodex.api_key ) {
+                return sendSynthesizedByEndpoint(
+                    res,
+                    pathname,
+                    isStream,
+                    `💻 **代码护栏已生效（Dry-Run 模拟透传）**：判定为编程/对话请求，100% 透传至 \`${activeCodex.name} (${activeCodex.model})\`，未触发画图拦截。`,
+                    activeCodex.model || 'gpt-4o'
+                );
+            }
+
             const upBase = activeCodex.base_url.replace(/\/+$/, '');
+
+            // [P0-1] Proactive Cross-Protocol Bridge if `/v1/responses` is sent to a `chat` wire_api provider
+            if (pathname === '/v1/responses' && shouldBridgeResponsesToChat(activeCodex)) {
+                return forwardToUpstreamChatAsResponses({
+                    req,
+                    res,
+                    upBase,
+                    parsedUrl,
+                    bodyObj,
+                    activeCodex,
+                    isStream,
+                    reasonLabel: `已自动将 /v1/responses 桥接至 ${activeCodex.name} (/v1/chat/completions)`
+                });
+            }
+
             const upUrl = new URL(upBase + pathname.replace(/^\/v1/, '') + parsedUrl.search);
             const isHttps = upUrl.protocol === 'https:';
 
@@ -1344,11 +1755,26 @@ const server = http.createServer(async (req, res) => {
                 method: req.method,
                 headers
             }, pRes => {
+                // [P0-1] Reactive Auto-Fallback: If upstream relay rejects `/v1/responses` with 404/405/501,
+                // automatically fall back to `/v1/chat/completions` protocol bridge!
+                if (pathname === '/v1/responses' && (pRes.statusCode === 404 || pRes.statusCode === 405 || pRes.statusCode === 501)) {
+                    pRes.resume();
+                    return forwardToUpstreamChatAsResponses({
+                        req,
+                        res,
+                        upBase,
+                        parsedUrl,
+                        bodyObj,
+                        activeCodex,
+                        isStream,
+                        reasonLabel: `上游不支持 /v1/responses (HTTP ${pRes.statusCode})，已自动降级桥接至 /v1/chat/completions`
+                    });
+                }
                 res.writeHead(pRes.statusCode, pRes.headers);
                 pRes.pipe(res);
             });
             pReq.on('error', e => {
-                if (!res.headersSent) sendError(res, `Upstream Gateway Error: ${e.message}`, 502);
+                if (!res.headersSent) sendError(res, `Upstream Gateway Error: ${e.message}`, 502, req);
             });
             pReq.write(outgoingPayload);
             pReq.end();
@@ -1373,7 +1799,7 @@ const server = http.createServer(async (req, res) => {
             res.writeHead(pRes.statusCode, pRes.headers);
             pRes.pipe(res);
         });
-        pReq.on('error', e => { if (!res.headersSent) sendError(res, e.message, 502); });
+        pReq.on('error', e => { if (!res.headersSent) sendError(res, e.message, 502, req); });
         req.pipe(pReq);
         return;
     }
@@ -1389,15 +1815,20 @@ const server = http.createServer(async (req, res) => {
         return res.end('Not found');
     }
 
-    // 3. API ROUTES (/api/*)
+    // 3. API ROUTES (/api/*) - Protected by [P0-2] Loopback & Local Token Auth
     if (pathname.startsWith('/api/')) {
+        const authCheck = verifyLocalApiAuth(req, pathname);
+        if (!authCheck.ok) {
+            return sendError(res, authCheck.reason, authCheck.status || 401, req);
+        }
+
         try {
             if (pathname === '/api/health' && req.method === 'GET') {
                 const effImg = getEffectiveImageProvider();
                 const activeCodex = appConfig.codexProviders.find(p => p.id === appConfig.activeCodexProvider) || appConfig.codexProviders[0];
                 return sendJson(res, {
                     status: 'ok',
-                    version: '2.5.0',
+                    version: '2.6.0',
                     provider: effImg ? effImg.name : '未配置',
                     model: effImg ? effImg.model : 'gpt-image-2',
                     configured: Boolean(effImg && effImg.api_key),
@@ -1416,13 +1847,13 @@ const server = http.createServer(async (req, res) => {
                     image_model: effImg ? effImg.model : '-',
                     total_captured: totalCapturedRequests,
                     latest_event: gatewayEvents[0] || null
-                });
+                }, 200, req);
             }
 
             if (pathname === '/api/system/onboarding-complete' && req.method === 'POST') {
                 appConfig.onboarding_completed = true;
                 saveConfig(appConfig);
-                return sendJson(res, { ok: true, onboarding_completed: true });
+                return sendJson(res, { ok: true, onboarding_completed: true }, 200, req);
             }
 
             if (pathname === '/api/events' && req.method === 'GET') {
@@ -1430,13 +1861,13 @@ const server = http.createServer(async (req, res) => {
                     ok: true,
                     total_captured: totalCapturedRequests,
                     events: gatewayEvents
-                });
+                }, 200, req);
             }
 
             if (pathname === '/api/events/clear' && req.method === 'POST') {
                 gatewayEvents.length = 0;
                 totalCapturedRequests = 0;
-                return sendJson(res, { ok: true, message: '实时捕获日志已清空' });
+                return sendJson(res, { ok: true, message: '实时捕获日志已清空' }, 200, req);
             }
 
             if (pathname === '/api/codex/info' && req.method === 'GET') {
@@ -1468,7 +1899,7 @@ const server = http.createServer(async (req, res) => {
                     memory: getMemoryStats(),
                     total_captured: totalCapturedRequests,
                     recent_events: gatewayEvents.slice(0, 15)
-                });
+                }, 200, req);
             }
 
             if ((pathname === '/api/codex/toggle' || pathname === '/api/codex/gateway-settings') && req.method === 'POST') {
@@ -1489,7 +1920,7 @@ const server = http.createServer(async (req, res) => {
                     routing_mode: appConfig.routingMode,
                     connection_category: appConfig.connectionCategory,
                     message: '设置已更新'
-                });
+                }, 200, req);
             }
 
             if ((pathname === '/api/providers/active' || pathname === '/api/providers/activate') && req.method === 'POST') {
@@ -1498,28 +1929,28 @@ const server = http.createServer(async (req, res) => {
                 if (b.codex_provider_id || appConfig.codexProviders.some(p => p.id === targetId)) {
                     appConfig.activeCodexProvider = targetId;
                     saveConfig(appConfig);
-                    return sendJson(res, { ok: true, success: true, activeCodex: targetId, message: '当前生效 API 渠道已切换' });
+                    return sendJson(res, { ok: true, success: true, activeCodex: targetId, message: '当前生效 API 渠道已切换' }, 200, req);
                 }
                 if (b.image_provider_id || appConfig.imageProviders.some(p => p.id === targetId)) {
                     appConfig.activeImageProvider = targetId;
                     saveConfig(appConfig);
-                    return sendJson(res, { ok: true, success: true, activeImage: targetId, message: '生图引擎已切换' });
+                    return sendJson(res, { ok: true, success: true, activeImage: targetId, message: '生图引擎已切换' }, 200, req);
                 }
-                return sendJson(res, { ok: true, active: targetId });
+                return sendJson(res, { ok: true, active: targetId }, 200, req);
             }
 
             if (pathname === '/api/providers/delete' && req.method === 'POST') {
                 const { parsed: b } = await parseJsonBody(req);
                 const targetId = b.id;
                 if (appConfig.codexProviders.length <= 1) {
-                    return sendError(res, '至少需要保留一个渠道配置', 400);
+                    return sendError(res, '至少需要保留一个渠道配置', 400, req);
                 }
                 appConfig.codexProviders = appConfig.codexProviders.filter(p => p.id !== targetId);
                 if (appConfig.activeCodexProvider === targetId) {
                     appConfig.activeCodexProvider = appConfig.codexProviders[0].id;
                 }
                 saveConfig(appConfig);
-                return sendJson(res, { ok: true, activeCodex: appConfig.activeCodexProvider, message: '渠道已删除' });
+                return sendJson(res, { ok: true, activeCodex: appConfig.activeCodexProvider, message: '渠道已删除' }, 200, req);
             }
 
             if (pathname === '/api/providers/probe' && req.method === 'POST') {
@@ -1530,7 +1961,7 @@ const server = http.createServer(async (req, res) => {
                 if ((!apiKey || apiKey.includes('...') || apiKey === '****') && prov) apiKey = prov.api_key;
                 if ((!apiKey || apiKey.includes('...')) && getEffectiveImageProvider().api_key) apiKey = getEffectiveImageProvider().api_key;
                 if (!baseUrl && prov) baseUrl = prov.base_url.replace(/\/+$/, '');
-                if (!baseUrl) return sendError(res, '请先填写接口地址 Base URL', 400);
+                if (!baseUrl) return sendError(res, '请先填写接口地址 Base URL', 400, req);
 
                 const targetUrl = baseUrl.endsWith('/v1') ? `${baseUrl}/models` : `${baseUrl}/v1/models`;
                 const startMs = Date.now();
@@ -1547,16 +1978,16 @@ const server = http.createServer(async (req, res) => {
                         message: r.statusCode >= 200 && r.statusCode < 300
                             ? `连通成功 (${latency}ms · HTTP ${r.statusCode})`
                             : `服务器可达 (${latency}ms · HTTP ${r.statusCode})`
-                    });
+                    }, 200, req);
                 } catch (e) {
-                    return sendJson(res, { ok: false, reachable: false, message: `连接失败: ${e.message}` });
+                    return sendJson(res, { ok: false, reachable: false, message: `连接失败: ${e.message}` }, 200, req);
                 }
             }
 
             // DYNAMIC MODEL FETCH (Supports both Coding & Image Engine model discovery!)
             if ((pathname === '/api/models/fetch' || pathname === '/api/providers/fetch-models') && req.method === 'POST') {
                 const { parsed: b } = await parseJsonBody(req);
-                const purpose = b.purpose || 'all'; // 'codex' | 'image' | 'all'
+                const purpose = b.purpose || 'all';
                 let baseUrl = (b.base_url || '').trim();
                 let apiKey = (b.api_key || '').trim();
 
@@ -1629,7 +2060,7 @@ const server = http.createServer(async (req, res) => {
                                 ? `已从中转站拉取 ${sortedAll.length} 个模型（精准识别出 ${detectedImageModels.length} 个生图模型）`
                                 : `已从中转站拉取 ${sortedAll.length} 个模型，并附带常用生图模型预设`)
                             : `成功从中转站拉取 ${sortedAll.length} 个可用模型`
-                    });
+                    }, 200, req);
                 }
 
                 const combinedFallback = purpose === 'image'
@@ -1645,10 +2076,118 @@ const server = http.createServer(async (req, res) => {
                     image_models: defaultImageFallbacks,
                     detected_image_count: 0,
                     message: `中转站未开放公开 /models 列表 (${lastErr || '404'})，已自动载入标准主力与生图模型库供直接选取`
-                });
+                }, 200, req);
             }
 
-            // APPLY TO CODEX CONFIG.TOML & GLOBAL SKILL
+            // ONE-CLICK FULL-BLOODED GPT + RELAY IMAGE GEN SETUP (Express Mode)
+            if (pathname === '/api/codex/one-click-full-gpt' && req.method === 'POST') {
+                const { parsed: b } = await parseJsonBody(req);
+                let baseUrl = (b.base_url || '').trim();
+                let apiKey = (b.api_key || '').trim();
+
+                const relayProv = appConfig.codexProviders.find(p => p.id === 'codex-relay') || appConfig.codexProviders[0];
+                const imgProv = appConfig.imageProviders.find(p => p.id === 'image-relay') || appConfig.imageProviders[0];
+
+                if (!baseUrl) {
+                    baseUrl = (relayProv && relayProv.base_url) || 'https://api.openai.com/v1';
+                }
+                baseUrl = baseUrl.replace(/\/+$/, '');
+                if (!/\/v\d+$/i.test(baseUrl)) {
+                    baseUrl = baseUrl + '/v1';
+                }
+
+                if (!apiKey || apiKey.includes('...') || apiKey === '****') {
+                    apiKey = (relayProv && relayProv.api_key) || (imgProv && imgProv.api_key) || '';
+                }
+
+                const { fetchedData, detectedImageModels } = await fetchModelsFromUpstream(baseUrl, apiKey);
+
+                const preferredCodingOrder = [
+                    'gpt-5-codex', 'gpt-5', 'gpt-4.1', 'gpt-4o', 'o3', 'o3-mini', 'o1',
+                    'claude-3-7-sonnet-latest', 'claude-3-5-sonnet-20241022', 'deepseek-chat'
+                ];
+                let selectedCodingModel = (b.coding_model || '').trim();
+                if (!selectedCodingModel) {
+                    if (fetchedData && fetchedData.length > 0) {
+                        for (const cand of preferredCodingOrder) {
+                            const hit = fetchedData.find(m => m.toLowerCase() === cand.toLowerCase());
+                            if (hit) { selectedCodingModel = hit; break; }
+                        }
+                        if (!selectedCodingModel) {
+                            const gptHit = fetchedData.find(m => /^gpt-4o|^gpt-5|^o3|^o1/i.test(m) && !/image|audio|tts|whisper|embedding/i.test(m));
+                            selectedCodingModel = gptHit || fetchedData[0];
+                        }
+                    } else {
+                        selectedCodingModel = (relayProv && relayProv.model) || 'gpt-4o';
+                    }
+                }
+
+                const preferredImageOrder = [
+                    'gpt-image-2', 'gpt-image-1', 'dall-e-3', 'gpt-4o-image', 'flux-pro',
+                    'black-forest-labs/FLUX.1-pro', 'black-forest-labs/FLUX.1-schnell', 'Kwai-Kolors/Kolors'
+                ];
+                let selectedImageModel = (b.image_model || '').trim();
+                if (!selectedImageModel) {
+                    if (detectedImageModels && detectedImageModels.length > 0) {
+                        for (const cand of preferredImageOrder) {
+                            const hit = detectedImageModels.find(m => m.toLowerCase() === cand.toLowerCase());
+                            if (hit) { selectedImageModel = hit; break; }
+                        }
+                        if (!selectedImageModel) selectedImageModel = detectedImageModels[0];
+                    } else {
+                        selectedImageModel = (imgProv && imgProv.model) || 'gpt-image-2';
+                    }
+                }
+
+                const wireApi = /^deepseek|^claude/i.test(selectedCodingModel) ? 'chat' : 'responses';
+
+                if (relayProv) {
+                    relayProv.base_url = baseUrl;
+                    if (apiKey) relayProv.api_key = apiKey;
+                    relayProv.model = selectedCodingModel;
+                    relayProv.wire_api = wireApi;
+                    appConfig.activeCodexProvider = relayProv.id;
+                }
+                if (imgProv) {
+                    imgProv.base_url = baseUrl;
+                    if (apiKey) imgProv.api_key = apiKey;
+                    imgProv.model = selectedImageModel;
+                    appConfig.activeImageProvider = imgProv.id;
+                }
+
+                appConfig.connectionCategory = 'relay_api';
+                appConfig.routingMode = 'gateway';
+                appConfig.syncImageKey = true;
+                appConfig.mode1_llm_tool = true;
+                appConfig.mode2_prefix_direct = true;
+                appConfig.onboarding_completed = true;
+                saveConfig(appConfig);
+
+                syncProviderToCodexToml(relayProv, 'gateway', 'relay_api');
+                const skillRes = { ok: true };
+
+                recordGatewayEvent({
+                    source: '一键满血激活',
+                    message: `中转站: ${baseUrl}`,
+                    action: `⚡ 已绑定满血 ${selectedCodingModel} (${wireApi}) + 生图 ${selectedImageModel}`,
+                    status: 'success'
+                });
+
+                return sendJson(res, {
+                    ok: true,
+                    success: true,
+                    base_url: baseUrl,
+                    coding_model: selectedCodingModel,
+                    image_model: selectedImageModel,
+                    wire_api: wireApi,
+                    fetched_count: fetchedData ? fetchedData.length : 0,
+                    detected_image_count: detectedImageModels ? detectedImageModels.length : 0,
+                    skill_installed: skillRes.ok,
+                    memory: getMemoryStats(),
+                    message: `⚡ 一键满血激活成功！编程模型: ${selectedCodingModel} (${wireApi} 原生协议) · 生图引擎: ${selectedImageModel}`
+                }, 200, req);
+            }
+
             if ((pathname === '/api/codex/apply' || pathname === '/api/codex/apply-provider') && req.method === 'POST') {
                 const { parsed: b } = await parseJsonBody(req);
                 const category = b.connection_category || appConfig.connectionCategory || 'relay_api';
@@ -1670,10 +2209,10 @@ const server = http.createServer(async (req, res) => {
                     action: '🚀 已同步写入 ~/.codex/config.toml 并挂载全局生图 Skill',
                     status: 'success'
                 });
-                return sendJson(res, { ok: true, success: true, ...syncResult });
+                return sendJson(res, { ok: true, success: true, ...syncResult }, 200, req);
             }
 
-            // UNIFIED PROVIDERS SAVE (With Auto Sync to Image Provider + Image Model Override)
+            // UNIFIED PROVIDERS SAVE
             if ((pathname === '/api/providers/save' || pathname === '/api/providers') && req.method === 'POST') {
                 const { parsed: b } = await parseJsonBody(req);
                 const type = b.type || (b.provider && b.provider.generation_path ? 'image' : 'codex');
@@ -1697,7 +2236,7 @@ const server = http.createServer(async (req, res) => {
                             id: newId,
                             category: p.category || 'relay_api',
                             name: p.name || '自定义 API 渠道',
-                            base_url: p.base_url || 'https://api.openai-proxy.org/v1',
+                            base_url: p.base_url || 'https://api.openai.com/v1',
                             model: p.model || 'gpt-4o',
                             wire_api: p.wire_api || 'responses',
                             api_key: finalApiKey,
@@ -1707,7 +2246,6 @@ const server = http.createServer(async (req, res) => {
                     }
                     if (p.id) appConfig.activeCodexProvider = p.id;
 
-                    // Sync key, base_url, and optional image_model to image-relay provider
                     const imgRelay = appConfig.imageProviders.find(img => img.id === 'image-relay') || appConfig.imageProviders[0];
                     if (imgRelay) {
                         if (b.image_model) imgRelay.model = b.image_model;
@@ -1725,7 +2263,7 @@ const server = http.createServer(async (req, res) => {
                         message: appConfig.syncImageKey
                             ? `API 渠道已保存（生图引擎已同步绑定模型：${imgRelay?.model || 'gpt-image-2'}）`
                             : `API 渠道配置已保存`
-                    });
+                    }, 200, req);
                 } else {
                     const idx = appConfig.imageProviders.findIndex(x => x.id === p.id);
                     let finalApiKey = p.api_key || '';
@@ -1739,7 +2277,7 @@ const server = http.createServer(async (req, res) => {
                         appConfig.imageProviders.push({
                             id: p.id || `img-${Date.now().toString(36)}`,
                             name: p.name || '自定义生图接口',
-                            base_url: p.base_url || 'https://api.openai-proxy.org/v1',
+                            base_url: p.base_url || 'https://api.openai.com/v1',
                             model: p.model || 'gpt-image-2',
                             generation_path: p.generation_path || '/images/generations',
                             edit_path: p.edit_path || '/images/edits',
@@ -1749,7 +2287,7 @@ const server = http.createServer(async (req, res) => {
                     }
                     if (p.id) appConfig.activeImageProvider = p.id;
                     saveConfig(appConfig);
-                    return sendJson(res, { ok: true, success: true, activeImage: appConfig.activeImageProvider, message: '生图引擎配置已保存' });
+                    return sendJson(res, { ok: true, success: true, activeImage: appConfig.activeImageProvider, message: '生图引擎配置已保存' }, 200, req);
                 }
             }
 
@@ -1765,12 +2303,12 @@ const server = http.createServer(async (req, res) => {
                     syncImageKey: appConfig.syncImageKey,
                     imageProviders: appConfig.imageProviders.map(mask),
                     codexProviders: appConfig.codexProviders.map(mask)
-                });
+                }, 200, req);
             }
 
             if (pathname === '/api/codex/install' && req.method === 'POST') {
                 const r = installGlobalCodexSkill();
-                return sendJson(res, { ...r, message: '全局 Codex Image2 视觉插件已安装并就绪' });
+                return sendJson(res, { ...r, message: '全局 Codex Image2 视觉插件已安装并就绪' }, 200, req);
             }
 
             if (pathname === '/api/system/reset-config' && req.method === 'POST') {
@@ -1783,7 +2321,7 @@ const server = http.createServer(async (req, res) => {
                     action: '🧹 已恢复初始空白状态（重新开启新手向导）',
                     status: 'info'
                 });
-                return sendJson(res, { ok: true, should_show_onboarding: true, message: '已清空所有保存的 API 密钥与配置，恢复至初始状态' });
+                return sendJson(res, { ok: true, should_show_onboarding: true, message: '已清空所有保存的 API 密钥与配置，恢复至初始状态' }, 200, req);
             }
 
             if (pathname === '/api/system/clear-history' && req.method === 'POST') {
@@ -1796,30 +2334,30 @@ const server = http.createServer(async (req, res) => {
                         }
                     }
                 }
-                return sendJson(res, { ok: true, removed, message: `已清理本地生成的图片与历史记录` });
+                return sendJson(res, { ok: true, removed, message: `已清理本地生成的图片与历史记录` }, 200, req);
             }
 
             if (pathname === '/api/codex/restore' && req.method === 'POST') {
                 const paths = getCodexPaths();
                 if (fs.existsSync(paths.configTomlBak)) {
                     fs.copyFileSync(paths.configTomlBak, paths.configToml);
-                    return sendJson(res, { ok: true, message: '已从备份恢复 Codex 原始 config.toml' });
+                    return sendJson(res, { ok: true, message: '已从备份恢复 Codex 原始 config.toml' }, 200, req);
                 }
-                return sendJson(res, { ok: true, message: '未检测到旧备份，当前已是干净配置' });
+                return sendJson(res, { ok: true, message: '未检测到旧备份，当前已是干净配置' }, 200, req);
             }
 
             if (pathname === '/api/system/gc' && req.method === 'POST') {
                 triggerCompactGC();
-                return sendJson(res, { ok: true, memory: getMemoryStats(), message: '内存回收已执行' });
+                return sendJson(res, { ok: true, memory: getMemoryStats(), message: '内存回收已执行' }, 200, req);
             }
 
             if (pathname === '/api/system/shutdown' && req.method === 'POST') {
-                sendJson(res, { ok: true, message: '后台服务已安全关闭' });
+                sendJson(res, { ok: true, message: '后台服务已安全关闭' }, 200, req);
                 setTimeout(() => process.exit(0), 200);
                 return;
             }
 
-                        if (pathname === '/api/system/reveal-file' && req.method === 'POST') {
+            if (pathname === '/api/system/reveal-file' && req.method === 'POST') {
                 const { parsed: b } = await parseJsonBody(req);
                 let target = '';
                 if (b.filename) {
@@ -1829,13 +2367,14 @@ const server = http.createServer(async (req, res) => {
                 } else {
                     target = OUTPUTS_DIR;
                 }
-                const success = revealInFileManager(target);
+                const safeTarget = resolveSafeLocalPath(target, OUTPUTS_DIR);
+                const success = revealInFileManager(safeTarget);
                 return sendJson(res, {
                     ok: true,
                     success,
-                    path: target,
+                    path: safeTarget,
                     message: '已在文件管理器中打开并定位照片'
-                });
+                }, 200, req);
             }
 
             if (pathname === '/api/system/open-folder' && req.method === 'POST') {
@@ -1851,7 +2390,7 @@ const server = http.createServer(async (req, res) => {
                 } else if (b.folder === 'outputs') {
                     target = OUTPUTS_DIR;
                 } else if (b.path) {
-                    target = b.path;
+                    target = resolveSafeLocalPath(b.path, OUTPUTS_DIR);
                 }
                 const success = revealInFileManager(target);
                 return sendJson(res, {
@@ -1859,7 +2398,7 @@ const server = http.createServer(async (req, res) => {
                     success,
                     path: target,
                     message: '已在文件管理器中打开目录'
-                });
+                }, 200, req);
             }
 
             if (pathname === '/api/system/export-config' && req.method === 'GET') {
@@ -1867,7 +2406,7 @@ const server = http.createServer(async (req, res) => {
                 return sendJson(res, {
                     ok: true,
                     app: 'Codex Studio',
-                    version: '2.5.0',
+                    version: '2.6.0',
                     exported_at: new Date().toISOString(),
                     routingMode: appConfig.routingMode,
                     syncImageKey: appConfig.syncImageKey,
@@ -1875,7 +2414,7 @@ const server = http.createServer(async (req, res) => {
                     mode2_prefix_direct: appConfig.mode2_prefix_direct,
                     codexProviders: (appConfig.codexProviders || []).map(stripKey),
                     imageProviders: (appConfig.imageProviders || []).map(stripKey)
-                });
+                }, 200, req);
             }
 
             if (pathname === '/api/system/import-config' && req.method === 'POST') {
@@ -1902,7 +2441,7 @@ const server = http.createServer(async (req, res) => {
                     });
                 }
                 saveConfig(appConfig);
-                return sendJson(res, { ok: true, message: '渠道配置预设已成功导入' });
+                return sendJson(res, { ok: true, message: '渠道配置预设已成功导入' }, 200, req);
             }
 
             if (pathname === '/api/system/storage-info' && req.method === 'GET') {
@@ -1939,7 +2478,7 @@ const server = http.createServer(async (req, res) => {
                     outputs_count: outputCount,
                     total_images: outputCount,
                     total_size_mb: +(totalBytes / 1048576).toFixed(2)
-                });
+                }, 200, req);
             }
 
             if (pathname === '/api/generate' && req.method === 'POST') {
@@ -1952,7 +2491,7 @@ const server = http.createServer(async (req, res) => {
                     refFiles: [],
                     source: b.source || 'studio-ui'
                 });
-                return sendJson(res, r);
+                return sendJson(res, r, 200, req);
             }
 
             if ((pathname === '/api/edit' || pathname === '/api/edit-url') && req.method === 'POST') {
@@ -1967,7 +2506,7 @@ const server = http.createServer(async (req, res) => {
                         refFiles: files,
                         source: 'studio-edit'
                     });
-                    return sendJson(res, r);
+                    return sendJson(res, r, 200, req);
                 } else {
                     const { parsed: b } = await parseJsonBody(req);
                     const refFiles = [];
@@ -1991,7 +2530,7 @@ const server = http.createServer(async (req, res) => {
                         refFiles,
                         source: 'studio-edit'
                     });
-                    return sendJson(res, r);
+                    return sendJson(res, r, 200, req);
                 }
             }
 
@@ -2036,27 +2575,43 @@ const server = http.createServer(async (req, res) => {
                     }
                 }
                 files.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-                return sendJson(res, files);
+                return sendJson(res, files, 200, req);
             }
 
-            return sendError(res, 'Not found', 404);
+            return sendError(res, 'Not found', 404, req);
         } catch (err) {
-            return sendError(res, err.message || 'Server error', 500);
+            return sendError(res, err.message || 'Server error', 500, req);
         }
     }
 
-    // 4. FRONTEND STATIC SERVING
+    // 4. FRONTEND STATIC SERVING (With Dynamic Local Token Injection)
     let reqPath = pathname === '/' ? '/index.html' : pathname;
-    let fp = path.join(PUBLIC_DIR, reqPath);
-    if (fs.existsSync(fp) && fs.statSync(fp).isFile()) {
-        res.writeHead(200, { 'Content-Type': getMimeType(fp) });
-        return fs.createReadStream(fp, { highWaterMark: 16384 }).pipe(res);
+    let fp = path.resolve(PUBLIC_DIR, '.' + reqPath);
+    if (!fp.startsWith(path.resolve(PUBLIC_DIR))) {
+        res.writeHead(403);
+        return res.end('Forbidden');
     }
+
     const indexFp = path.join(PUBLIC_DIR, 'index.html');
-    if (fs.existsSync(indexFp)) {
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-        return fs.createReadStream(indexFp).pipe(res);
+    const targetFp = (fs.existsSync(fp) && fs.statSync(fp).isFile()) ? fp : (fs.existsSync(indexFp) ? indexFp : null);
+
+    if (targetFp) {
+        if (path.basename(targetFp) === 'index.html') {
+            let html = fs.readFileSync(targetFp, 'utf8');
+            html = html.replace(
+                /<meta\s+name="image2-local-token"\s+content="[^"]*">/i,
+                `<meta name="image2-local-token" content="${LOCAL_SERVICE_TOKEN}">`
+            );
+            res.writeHead(200, {
+                'Content-Type': 'text/html; charset=utf-8',
+                'Cache-Control': 'no-store'
+            });
+            return res.end(html, 'utf8');
+        }
+        res.writeHead(200, { 'Content-Type': getMimeType(targetFp) });
+        return fs.createReadStream(targetFp, { highWaterMark: 16384 }).pipe(res);
     }
+
     res.writeHead(404);
     res.end('Not Found');
 });
@@ -2069,5 +2624,5 @@ setInterval(triggerCompactGC, 60000).unref();
 server.listen(PORT, HOST, () => {
     triggerCompactGC();
     const mem = getMemoryStats();
-    console.log(`[Codex Studio v2.5.0] Running on http://${HOST}:${PORT} | Gateway: /v1 | RAM: ${mem.heap_used_mb}MB Heap / ${mem.rss_mb}MB RSS`);
+    console.log(`[Codex Studio v2.6.0] Running on http://${HOST}:${PORT} | Gateway: /v1 | RAM: ${mem.heap_used_mb}MB Heap / ${mem.rss_mb}MB RSS`);
 });

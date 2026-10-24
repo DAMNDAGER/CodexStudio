@@ -35,6 +35,7 @@ ENV/
 
 # Local database, session tokens & user outputs
 .image2-token
+data/.image2-token
 image2.sqlite3
 data/*.sqlite*
 data/history.json

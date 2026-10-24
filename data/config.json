@@ -6,7 +6,7 @@
   "connectionCategory": "relay_api",
   "officialReasoningEffort": "medium",
   "officialModel": "gpt-4o",
-  "onboarding_completed": true,
+  "onboarding_completed": false,
   "mode1_llm_tool": true,
   "mode2_prefix_direct": true,
   "codexProviders": [
@@ -14,13 +14,13 @@
       "id": "codex-relay",
       "category": "relay_api",
       "badge": "推荐 · 一Key双用",
-      "name": "聚合中转站 (OneAPI / NewAPI)",
-      "base_url": "https://api.openai-proxy.org/v1",
+      "name": "主力 API 渠道 (OpenAI 兼容)",
+      "base_url": "https://api.openai.com/v1",
       "model": "gpt-4o",
       "wire_api": "responses",
       "api_key": "",
       "api_keys": [],
-      "notes": "兼容所有标准中转站 · 支持在线拉取模型与一Key双用生图"
+      "notes": "兼容标准 OpenAI / Responses / Chat 接口 · 支持在线拉取模型与一Key双用生图"
     },
     {
       "id": "codex-official",
@@ -32,38 +32,38 @@
       "wire_api": "responses",
       "api_key": "",
       "api_keys": [],
-      "notes": "OpenAI 官方原生渠道 · Responses 协议"
+      "notes": "OpenAI 官方原生接口 · Responses 协议"
     },
     {
       "id": "codex-deepseek",
       "category": "deepseek_official",
-      "badge": "DeepSeek 官方",
-      "name": "DeepSeek 官方 (V3 / R1)",
+      "badge": "DeepSeek",
+      "name": "DeepSeek 官方接口 (V3 / R1)",
       "base_url": "https://api.deepseek.com/v1",
       "model": "deepseek-chat",
       "wire_api": "chat",
       "api_key": "",
       "api_keys": [],
-      "notes": "DeepSeek 官方极速接口 · Chat 协议自动转换"
+      "notes": "DeepSeek 官方接口 · Chat 协议自动桥接"
     },
     {
-      "id": "codex-silicon",
+      "id": "codex-custom-chat",
       "category": "claude_relay",
-      "badge": "Claude / 硅基",
-      "name": "Claude 专线 / 硅基流动",
-      "base_url": "https://api.siliconflow.cn/v1",
+      "badge": "通用 Chat",
+      "name": "备用兼容渠道 (Chat 协议)",
+      "base_url": "https://api.openai.com/v1",
       "model": "claude-3-5-sonnet-20241022",
       "wire_api": "chat",
       "api_key": "",
       "api_keys": [],
-      "notes": "Claude 3.5 Sonnet 及开源大模型聚合"
+      "notes": "通用 /v1/chat/completions 兼容接口"
     }
   ],
   "imageProviders": [
     {
       "id": "image-relay",
-      "name": "中转站联动生图引擎 (一Key双用)",
-      "base_url": "https://api.openai-proxy.org/v1",
+      "name": "主渠道联动生图引擎 (一Key双用)",
+      "base_url": "https://api.openai.com/v1",
       "model": "gpt-image-2",
       "generation_path": "/images/generations",
       "edit_path": "/images/edits",
@@ -81,10 +81,10 @@
       "api_key": ""
     },
     {
-      "id": "image-flux",
-      "name": "FLUX.1 Pro / 第三方独立生图接口",
-      "base_url": "https://api.siliconflow.cn/v1",
-      "model": "black-forest-labs/FLUX.1-pro",
+      "id": "image-custom",
+      "name": "独立自定义生图接口",
+      "base_url": "https://api.openai.com/v1",
+      "model": "flux-pro",
       "generation_path": "/images/generations",
       "edit_path": "/images/edits",
       "image_field": "image",

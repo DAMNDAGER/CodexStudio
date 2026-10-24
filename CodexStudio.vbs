@@ -25,7 +25,7 @@ Function CheckCurrentVersionService()
         If Err.Number = 0 Then
             If req.Status = 200 Then
                 bodyTxt = req.responseText
-                If InStr(bodyTxt, "2.5.0") > 0 Then
+                If InStr(bodyTxt, "2.6.0") > 0 Then
                     CheckCurrentVersionService = True
                 End If
             End If
@@ -117,9 +117,30 @@ Function IsRealPyLauncher()
     On Error GoTo 0
 End Function
 
+Sub EnsureWidescreenProfile(profileDir)
+    On Error Resume Next
+    Dim baseDir, defDir, prefFile, ts, prefJson
+    baseDir = shell.ExpandEnvironmentStrings("%LOCALAPPDATA%\CodexStudio")
+    If Not fso.FolderExists(baseDir) Then fso.CreateFolder(baseDir)
+    If Not fso.FolderExists(profileDir) Then fso.CreateFolder(profileDir)
+    defDir = profileDir & "\Default"
+    If Not fso.FolderExists(defDir) Then fso.CreateFolder(defDir)
+    prefFile = defDir & "\Preferences"
+    prefJson = "{""browser"":{""window_placement"":{""bottom"":920,""left"":120,""maximized"":false,""right"":1560,""top"":60,""work_area_bottom"":1040,""work_area_left"":0,""work_area_right"":1920,""work_area_top"":0}}}"
+    Set ts = fso.CreateTextFile(prefFile, True, False)
+    ts.Write prefJson
+    ts.Close
+    Set ts = Nothing
+    On Error GoTo 0
+End Sub
+
 Function LaunchBrowser()
     On Error Resume Next
-    Dim edgePaths(2), ep, launched
+    Dim edgePaths(2), ep, launched, profileDir, winArgs
+    profileDir = shell.ExpandEnvironmentStrings("%LOCALAPPDATA%\CodexStudio\WindowProfile_v260")
+    EnsureWidescreenProfile profileDir
+    winArgs = " --user-data-dir=""" & profileDir & """ --app=" & url & " --window-size=1440,860 --window-position=120,60"
+
     edgePaths(0) = "msedge.exe"
     edgePaths(1) = shell.ExpandEnvironmentStrings("%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe")
     edgePaths(2) = shell.ExpandEnvironmentStrings("%ProgramFiles%\Microsoft\Edge\Application\msedge.exe")
@@ -128,7 +149,7 @@ Function LaunchBrowser()
     For Each ep In edgePaths
         Err.Clear
         If ep = "msedge.exe" Or fso.FileExists(ep) Then
-            shell.Run """" & ep & """ --app=" & url & " --window-size=1280,820", 1, False
+            shell.Run """" & ep & """" & winArgs, 1, False
             If Err.Number = 0 Then
                 launched = True
                 Exit For
@@ -138,7 +159,7 @@ Function LaunchBrowser()
 
     If Not launched Then
         Err.Clear
-        shell.Run "chrome.exe --app=" & url & " --window-size=1280,820", 1, False
+        shell.Run "chrome.exe" & winArgs, 1, False
         If Err.Number <> 0 Then
             Err.Clear
             shell.Run url, 1, False
@@ -147,7 +168,7 @@ Function LaunchBrowser()
     On Error GoTo 0
 End Function
 
-' Step 1: Pre-flight check. If v2.5.0 service is already alive, ensure tray daemon is running, open window, and exit.
+' Step 1: Pre-flight check. If v2.6.0 service is already alive, ensure tray daemon is running, open window, and exit.
 isRunning = CheckCurrentVersionService()
 
 If isRunning Then

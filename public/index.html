@@ -8,7 +8,7 @@
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230071E3'><rect width='24' height='24' rx='7' fill='%230071E3'/><path d='M7 8l4 4-4 4M13 16h4' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/></svg>">
   <style>
 /* ==========================================================================
-   Codex Studio v2.5.0 - Apple macOS Sequoia HIG & Spring Physics Animation System
+   Codex Studio v2.6.0 - Apple macOS Sequoia HIG & Spring Physics Animation System
    ========================================================================== */
 :root {
   --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
@@ -604,6 +604,72 @@ body {
 .mt-12 { margin-top: 12px; }
 .mt-16 { margin-top: 16px; }
 .mt-20 { margin-top: 20px; }
+
+/* Widescreen Compact Homepage & Unified Dual-Column API + Image Studio */
+.hub-compact-topbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: var(--bg-card); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg); padding: 10px 14px; margin-bottom: 12px;
+  box-shadow: var(--shadow-card); flex-wrap: wrap;
+}
+.mode-segmented-bar {
+  display: inline-flex; background: var(--bg-card-subtle); padding: 3px;
+  border-radius: var(--radius-md); border: 1px solid var(--border-subtle); gap: 4px;
+}
+.mode-seg-btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 13px;
+  border-radius: 9px; border: none; background: transparent;
+  color: var(--text-secondary); font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: var(--spring-smooth);
+}
+.mode-seg-btn:hover { color: var(--text-primary); }
+.mode-seg-btn.active {
+  background: var(--apple-blue); color: #FFF;
+  box-shadow: 0 3px 10px var(--apple-blue-glow);
+}
+.hub-topbar-right {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.active-summary-pill {
+  font-size: 11.5px; color: var(--text-secondary); background: var(--bg-card-subtle);
+  border: 1px solid var(--border-subtle); padding: 5px 11px; border-radius: var(--radius-full);
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.widescreen-dual-config-grid {
+  display: grid; grid-template-columns: 1.08fr 0.92fr; gap: 14px; align-items: stretch;
+}
+@media (max-width: 960px) {
+  .widescreen-dual-config-grid { grid-template-columns: 1fr; }
+}
+.sub-panel-box {
+  background: var(--bg-card-subtle); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg); padding: 14px 16px; display: flex; flex-direction: column; gap: 11px;
+}
+.sub-panel-header {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  padding-bottom: 9px; border-bottom: 1px solid var(--border-subtle);
+}
+.sub-panel-header h4 { font-size: 13.8px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 7px; }
+.wire-pill-group {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+}
+.wire-pill-item {
+  background: var(--bg-input); border: 1.5px solid var(--border-subtle);
+  border-radius: var(--radius-md); padding: 7px 10px; font-size: 11.5px; font-weight: 600;
+  color: var(--text-secondary); cursor: pointer; text-align: center; transition: var(--spring-smooth);
+}
+.wire-pill-item.active {
+  border-color: var(--apple-blue); background: rgba(0, 113, 227, 0.12); color: var(--text-primary);
+}
+.provider-cards-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px;
+}
+.provider-card {
+  min-height: 78px !important; padding: 10px 13px !important;
+}
+.provider-meta-bottom { margin-top: 6px !important; }
+.tab-viewport { padding: 16px 24px 28px 24px !important; }
+
   </style>
 </head>
 <body class="apple-dark">
@@ -624,7 +690,7 @@ body {
           <button id="btnTriggerGC" class="tl-dot tl-yellow" title="压缩整理内存"><span>−</span></button>
           <button id="btnToggleTheme" class="tl-dot tl-green" title="切换深色 / 浅色外观"><span>+</span></button>
         </div>
-        <div class="app-version-chip">Sequoia 2.3</div>
+        <div class="app-version-chip">v2.6.0</div>
       </div>
 
       <div class="app-branding">
@@ -655,7 +721,14 @@ body {
           <span class="nav-icon squircle-blue">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
           </span>
-          <span class="nav-text">Codex 接入与渠道</span>
+          <span class="nav-text">API 与生图总览</span>
+        </button>
+
+        <button class="nav-item" data-tab="tab-settings">
+          <span class="nav-icon squircle-pink">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </span>
+          <span class="nav-text">独立生图与存储设置</span>
         </button>
 
         <button class="nav-item" data-tab="tab-dual-engine">
@@ -667,7 +740,7 @@ body {
         </button>
 
         <button class="nav-item" data-tab="tab-creative-canvas">
-          <span class="nav-icon squircle-pink">
+          <span class="nav-icon squircle-green">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
           </span>
           <span class="nav-text">AI 视觉工坊</span>
@@ -681,18 +754,11 @@ body {
           <span class="nav-counter" id="galleryCountBadge">0</span>
         </button>
 
-        <button class="nav-item" data-tab="tab-settings">
-          <span class="nav-icon squircle-gray">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          </span>
-          <span class="nav-text">生图设置与数据清理</span>
-        </button>
-
         <button class="nav-item" id="btnNavOnboarding">
           <span class="nav-icon squircle-amber">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
           </span>
-          <span class="nav-text">新手教学向导</span>
+          <span class="nav-text">新手配置向导</span>
         </button>
       </nav>
 
@@ -734,120 +800,140 @@ body {
       </header>
 
       <div class="tab-viewport">
-        <!-- TAB 1: CODEX HUB WITH 3 DISTINCT CONNECTION CATEGORIES -->
+        <!-- TAB 1: CONCISE WIDESCREEN API & IMAGE UNIFIED WORKBENCH -->
         <section id="tab-codex-hub" class="tab-pane active">
-          <div class="category-tabs-bar">
-            <div class="category-tab-card active" data-cat="relay_api" id="catCardRelay">
-              <div class="cat-icon squircle-blue">🌐</div>
-              <div class="cat-info">
-                <h4>模式一：中转站 / 商业 API 多渠道管理</h4>
-                <p>统一管理多个中转站、DeepSeek、硅基流动或 OpenAI Key，支持编程与生图双模型拉取</p>
-              </div>
-            </div>
-
-            <div class="category-tab-card" data-cat="official_skill" id="catCardOfficial">
-              <div class="cat-icon squircle-green">🔐</div>
-              <div class="cat-info">
-                <h4>模式二：Codex 官方账号 + 视觉 Skill 挂载</h4>
-                <p>保留 Codex 客户端官方 OAuth 登录与 6.1 Sol 等原生模型，仅为其注入本地生图能力</p>
-              </div>
-            </div>
-
-            <div class="category-tab-card" data-cat="local_llm" id="catCardLocal">
-              <div class="cat-icon squircle-purple">💻</div>
-              <div class="cat-info">
-                <h4>模式三：本地算力免 Key 直连 (Ollama)</h4>
-                <p>免填 API Key，一键扫描本机 11434 / 1234 端口已安装的 Qwen-Coder、DeepSeek 本地模型</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- PANEL A: MULTI-API PROFILE MANAGER -->
-          <div id="panelCatRelay">
-            <div class="section-title-row">
-              <h4>已保存的 API 渠道列表（点击卡片即刻切换，可自由新增多个中转站渠道）</h4>
-              <button type="button" id="btnAddNewApiProfile" class="apple-btn apple-btn-secondary" style="padding:5px 12px;font-size:12px;">
-                <span>➕ 新增 API 渠道</span>
+          <!-- Compact Top Mode Switcher & Quick Auto-Probe Bar -->
+          <div class="hub-compact-topbar">
+            <div class="mode-segmented-bar">
+              <button type="button" class="mode-seg-btn category-tab-card active" data-cat="relay_api" id="catCardRelay">
+                <span>🌐 API 渠道与生图设置</span>
+              </button>
+              <button type="button" class="mode-seg-btn category-tab-card" data-cat="official_skill" id="catCardOfficial">
+                <span>🔐 官方客户端 + 视觉插件</span>
+              </button>
+              <button type="button" class="mode-seg-btn category-tab-card" data-cat="local_llm" id="catCardLocal">
+                <span>💻 本地 Ollama 直连</span>
               </button>
             </div>
 
-            <div class="provider-cards-grid" id="codexProviderGrid"></div>
+            <div class="hub-topbar-right">
+              <div class="active-summary-pill">
+                <span style="color:var(--apple-green);font-weight:700;">●</span>
+                <span id="lblExpressActiveModels">编程: gpt-4o | 生图: gpt-image-2</span>
+              </div>
+              <!-- Hidden compatibility inputs synced with main form -->
+              <input type="hidden" id="expressBaseUrl" value="https://api.openai.com/v1">
+              <input type="hidden" id="expressApiKey" value="">
+              <button type="button" id="btnExpressOneClickActivate" class="apple-btn apple-btn-accent" style="padding:6px 13px;font-size:12px;" title="自动拉取当前接口可用编程与生图模型并一键写入 Codex">
+                <span>⚡ 自动优选模型并激活</span>
+              </button>
+            </div>
+          </div>
 
-            <!-- Selected API Profile Editor -->
-            <div class="apple-card mt-16">
-              <div class="card-header-clean">
-                <div style="display:flex;align-items:center;gap:10px;">
-                  <h4>配置选定的 API 渠道凭据</h4>
-                  <span id="configDrawerProviderName" class="badge-blue">主力中转站 API #1</span>
+          <div id="advancedMultiChannelContainer">
+            <!-- PANEL A: WIDESCREEN UNIFIED CODING API + IMAGE API MANAGER -->
+            <div id="panelCatRelay">
+              <div class="section-title-row" style="margin:6px 0 8px 0;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <h4>已保存的 API 渠道</h4>
+                  <span class="section-hint">点击卡片即刻切换当前渠道</span>
                 </div>
-                <div style="display:flex;gap:8px;">
-                  <button type="button" id="btnProbeApi" class="apple-btn apple-btn-secondary" style="padding:5px 12px;font-size:11.5px;">
-                    <span>⚡ 测速与连通检测</span>
-                  </button>
-                  <button type="button" id="btnDeleteApiProfile" class="apple-btn apple-btn-danger" style="padding:5px 12px;font-size:11.5px;">
-                    <span>🗑️ 删除此渠道</span>
-                  </button>
-                </div>
+                <button type="button" id="btnAddNewApiProfile" class="apple-btn apple-btn-secondary" style="padding:5px 12px;font-size:12px;">
+                  <span>➕ 新增 API 渠道</span>
+                </button>
               </div>
 
-              <div class="apple-form-grid">
-                <div class="form-cell">
-                  <label>渠道显示名称</label>
-                  <input type="text" id="inputCodexName" placeholder="例如：主力中转站 Euzhi / 备用硅基流动">
-                </div>
+              <div class="provider-cards-grid" id="codexProviderGrid"></div>
 
-                <div class="form-cell">
-                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
-                    <label style="margin:0;">接口地址 (Base URL · 通常以 /v1 结尾)</label>
-                    <div style="display:flex;gap:4px;">
-                      <button type="button" class="quick-model-tag btn-quick-url" data-url="https://euzhi.vip/v1">Euzhi中转</button>
-                      <button type="button" class="quick-model-tag btn-quick-url" data-url="https://api.openai-proxy.org/v1">标准中转</button>
-                      <button type="button" class="quick-model-tag btn-quick-url" data-url="https://api.siliconflow.cn/v1">硅基流动</button>
+              <!-- Widescreen 2-Column Side-by-Side Unified Card: Left = Coding API, Right = Image API -->
+              <div class="apple-card mt-12" style="padding:16px 18px;">
+                <div class="widescreen-dual-config-grid">
+                  <!-- LEFT COLUMN: CODING API SETTINGS -->
+                  <div class="sub-panel-box">
+                    <div class="sub-panel-header">
+                      <div>
+                        <h4>💻 编程 API 渠道设置 <span id="configDrawerProviderName" class="badge-blue">主力 API 渠道</span></h4>
+                      </div>
+                      <div style="display:flex;gap:6px;">
+                        <button type="button" id="btnProbeApi" class="apple-btn apple-btn-secondary" style="padding:4px 10px;font-size:11px;">⚡ 测速</button>
+                        <button type="button" id="btnDeleteApiProfile" class="apple-btn apple-btn-danger" style="padding:4px 10px;font-size:11px;">🗑️ 删除</button>
+                      </div>
+                    </div>
+
+                    <div class="apple-form-grid" style="gap:10px;">
+                      <div class="form-cell">
+                        <label>渠道名称</label>
+                        <input type="text" id="inputCodexName" placeholder="例如：主力 API 渠道 / 备用接口">
+                      </div>
+
+                      <div class="form-cell">
+                        <label>Codex 通信协议</label>
+                        <div class="wire-pill-group">
+                          <div class="wire-pill-item active" id="cardWireResponses" title="Codex 原生 Responses API 格式">🌟 Responses 原生</div>
+                          <div class="wire-pill-item" id="cardWireChat" title="通用 /v1/chat/completions 兼容格式">⚡ Chat 兼容</div>
+                        </div>
+                        <input type="hidden" id="inputCodexWireApi" value="responses">
+                      </div>
+
+                      <div class="form-cell">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                          <label style="margin:0;">接口地址 (Base URL)</label>
+                          <div style="display:flex;gap:4px;">
+                            <button type="button" class="quick-model-tag btn-quick-url" data-url="https://api.openai.com/v1">OpenAI格式</button>
+                            <button type="button" class="quick-model-tag btn-quick-url" data-url="https://api.deepseek.com/v1">DeepSeek</button>
+                          </div>
+                        </div>
+                        <input type="text" id="inputCodexBaseUrl" placeholder="https://api.openai.com/v1">
+                      </div>
+
+                      <div class="form-cell">
+                        <label>API Key 令牌 (sk-...)</label>
+                        <div class="input-with-action">
+                          <input type="password" id="inputCodexApiKey" placeholder="填入 API Key（已保存显示掩码）">
+                          <button type="button" class="btn-toggle-visibility" id="btnToggleKeyVis">👁</button>
+                        </div>
+                      </div>
+
+                      <div class="form-cell wizard-cell-full">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+                          <label style="margin:0;">编程主力模型</label>
+                          <button type="button" id="btnMainFetchModels" class="apple-btn apple-btn-accent" style="padding:4px 10px;font-size:11px;">
+                            <span>🔄 在线拉取编程与生图模型</span>
+                          </button>
+                        </div>
+                        <div id="mainModelSelectArea" class="fetched-dropdown-banner hidden">
+                          <label id="lblMainFetchedCount">✓ 已获取可用编程模型列表（下拉选取）：</label>
+                          <select id="mainModelSelect"></select>
+                        </div>
+                        <div class="preset-pills-row" style="margin:4px 0 6px 0;">
+                          <button type="button" class="preset-pill btn-quick-model" data-model="gpt-5-codex" data-wire="responses">⚡ gpt-5-codex</button>
+                          <button type="button" class="preset-pill btn-quick-model" data-model="gpt-4o" data-wire="responses">⚡ gpt-4o</button>
+                          <button type="button" class="preset-pill btn-quick-model" data-model="o3-mini" data-wire="responses">🚀 o3-mini</button>
+                          <button type="button" class="preset-pill btn-quick-model" data-model="claude-3-5-sonnet-20241022" data-wire="chat">🟣 claude-3.5-sonnet</button>
+                          <button type="button" class="preset-pill btn-quick-model" data-model="deepseek-chat" data-wire="chat">🔷 deepseek-chat</button>
+                        </div>
+                        <input type="text" id="inputCodexModel" placeholder="例如: gpt-4o, gpt-5-codex, deepseek-chat" value="gpt-4o">
+                      </div>
                     </div>
                   </div>
-                  <input type="text" id="inputCodexBaseUrl" placeholder="https://euzhi.vip/v1">
-                </div>
 
-                <div class="form-cell wizard-cell-full">
-                  <label>API Key / 中转站令牌 (sk-...)</label>
-                  <div class="input-with-action">
-                    <input type="password" id="inputCodexApiKey" placeholder="填入中转站或官方 sk- 令牌（已保存则显示掩码，不修改可保持原样）">
-                    <button type="button" class="btn-toggle-visibility" id="btnToggleKeyVis">👁</button>
-                  </div>
-                </div>
+                  <!-- RIGHT COLUMN: UNIFIED IMAGE GENERATION API SETTINGS (CO-MANAGED IN SECTION 1!) -->
+                  <div class="sub-panel-box">
+                    <div class="sub-panel-header">
+                      <div>
+                        <h4>🎨 视觉生图 API 设置 <span class="badge-green" id="badgeHomeImageMode">一Key双用联动</span></h4>
+                      </div>
+                      <div style="display:flex;gap:6px;align-items:center;">
+                        <button type="button" id="btnExpressVerifyImage" class="apple-btn apple-btn-secondary" style="padding:4px 10px;font-size:11px;">🎨 校验生图</button>
+                        <button type="button" id="btnJumpToStandaloneImageTab" class="apple-btn apple-btn-secondary" style="padding:4px 10px;font-size:11px;" title="打开左侧第二栏独立生图与存储设置页">⚙️ 详细页</button>
+                      </div>
+                    </div>
 
-                <!-- Coding Model Fetch & Selector -->
-                <div class="form-cell wizard-cell-full">
-                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                    <label style="margin:0;">💻 编程主力大模型（可在线拉取中转站模型列表或直接输入）</label>
-                    <button type="button" id="btnMainFetchModels" class="apple-btn apple-btn-accent" style="padding:5px 12px;font-size:11.5px;">
-                      <span>🔄 在线拉取编程与生图模型列表</span>
-                    </button>
-                  </div>
-                  <div id="mainModelSelectArea" class="fetched-dropdown-banner hidden">
-                    <label id="lblMainFetchedCount">✓ 已从中转站获取可用编程模型列表（点击下拉直接选取）：</label>
-                    <select id="mainModelSelect"></select>
-                  </div>
-                  <div class="preset-pills-row">
-                    <button type="button" class="preset-pill btn-quick-model" data-model="gpt-5-codex" data-wire="responses">⚡️ gpt-5-codex</button>
-                    <button type="button" class="preset-pill btn-quick-model" data-model="gpt-4o" data-wire="responses">⚡️ gpt-4o</button>
-                    <button type="button" class="preset-pill btn-quick-model" data-model="o3-mini" data-wire="responses">🚀 o3-mini</button>
-                    <button type="button" class="preset-pill btn-quick-model" data-model="claude-3-5-sonnet-20241022" data-wire="chat">🟣 claude-3-5-sonnet</button>
-                    <button type="button" class="preset-pill btn-quick-model" data-model="deepseek-chat" data-wire="chat">🇨🇳 deepseek-chat</button>
-                  </div>
-                  <input type="text" id="inputCodexModel" placeholder="例如: gpt-4o, gpt-6.1-sol, claude-3-5-sonnet" value="gpt-4o">
-                </div>
-
-                <!-- One-Key Dual-Use Card WITH INLINE IMAGE MODEL FETCH & SELECTOR! -->
-                <div class="form-cell wizard-cell-full">
-                  <div class="apple-toggle-feature-card">
-                    <div class="feature-card-top-row">
-                      <div class="feature-card-info">
-                        <div class="feature-card-icon squircle-pink">🎨</div>
-                        <div class="feature-card-texts">
-                          <h5>一 Key 双用 · 自动联动视觉生图引擎（支持直接拉取并选取生图模型）</h5>
-                          <p>开启后自动复用当前中转站的 Key 与 Base URL 进行画图；若当前模型不可用，系统还支持自动探测中转站可用生图模型</p>
-                        </div>
+                    <!-- Toggle between One-Key Dual-Use and Standalone Image API Credentials -->
+                    <div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg-card);border:1px solid var(--border-subtle);padding:8px 12px;border-radius:var(--radius-md);">
+                      <div>
+                        <div style="font-size:12.5px;font-weight:700;color:var(--text-primary);">一 Key 双用（复用左侧编程接口与 Key）</div>
+                        <div style="font-size:11px;color:var(--text-muted);">关闭此开关即可在下方配置独立的生图接口地址与专用 Key</div>
                       </div>
                       <label class="ios-switch">
                         <input type="checkbox" id="chkMainSyncImage" checked>
@@ -855,164 +941,142 @@ body {
                       </label>
                     </div>
 
-                    <div class="feature-card-inline-box" id="inlineImageModelBox">
-                      <div style="display:flex;justify-content:space-between;align-items:center;">
-                        <label style="margin:0;font-size:12px;color:var(--text-primary);">🎨 当前绑定生图模型（解决中转站无 dall-e-3 报错，可在线拉取选择）：</label>
+                    <!-- Standalone Image API Inputs (Shown directly here when One-Key Dual-Use is OFF or expanded!) -->
+                    <div id="homeStandaloneImageFields" class="apple-form-grid hidden" style="gap:10px;background:var(--bg-card);border:1px dashed rgba(0,113,227,0.35);padding:10px 12px;border-radius:var(--radius-md);">
+                      <div class="form-cell">
+                        <label>独立生图接口 Base URL</label>
+                        <input type="text" id="inputHomeImageBaseUrl" placeholder="https://api.openai.com/v1">
+                      </div>
+                      <div class="form-cell">
+                        <label>独立生图专用 API Key</label>
+                        <div class="input-with-action">
+                          <input type="password" id="inputHomeImageApiKey" placeholder="sk-... (留空则复用左侧 Key)">
+                          <button type="button" class="btn-toggle-visibility" id="btnToggleHomeImageKeyVis">👁</button>
+                        </div>
+                      </div>
+                      <div class="form-cell wizard-cell-full">
+                        <label>文生图请求路径 (默认 /images/generations)</label>
+                        <input type="text" id="inputHomeImageGenPath" value="/images/generations" placeholder="/images/generations">
+                      </div>
+                    </div>
+
+                    <!-- Image Model Fetch & Selection -->
+                    <div class="form-cell" style="margin-top:2px;">
+                      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+                        <label style="margin:0;">当前生图模型</label>
                         <button type="button" id="btnInlineFetchImageModels" class="apple-btn apple-btn-accent" style="padding:4px 10px;font-size:11px;">
-                          <span>🔄 在线拉取中转站生图模型列表</span>
+                          <span>🔄 在线拉取生图模型</span>
                         </button>
                       </div>
 
                       <div id="inlineImageSelectArea" class="fetched-dropdown-banner hidden">
-                        <label id="lblInlineImageFetched">✓ 已识别中转站生图模型（下拉即刻切换）：</label>
+                        <label id="lblInlineImageFetched">✓ 已识别可用生图模型（下拉选取）：</label>
                         <select id="inlineImageModelSelect"></select>
                       </div>
 
-                      <div class="preset-pills-row">
-                        <button type="button" class="quick-model-tag btn-quick-img-model" data-model="gpt-image-2">⚡ gpt-image-2 (中转首选)</button>
+                      <div class="preset-pills-row" style="margin:4px 0 6px 0;">
+                        <button type="button" class="quick-model-tag btn-quick-img-model" data-model="gpt-image-2">⚡ gpt-image-2</button>
                         <button type="button" class="quick-model-tag btn-quick-img-model" data-model="gpt-image-1">⚡ gpt-image-1</button>
                         <button type="button" class="quick-model-tag btn-quick-img-model" data-model="dall-e-3">🎨 dall-e-3</button>
                         <button type="button" class="quick-model-tag btn-quick-img-model" data-model="gpt-4o-image">🖼 gpt-4o-image</button>
                         <button type="button" class="quick-model-tag btn-quick-img-model" data-model="flux-pro">✨ flux-pro</button>
-                        <button type="button" class="quick-model-tag btn-quick-img-model" data-model="black-forest-labs/FLUX.1-schnell">🚀 FLUX.1-schnell</button>
-                        <button type="button" class="quick-model-tag btn-quick-img-model" data-model="Kwai-Kolors/Kolors">🌈 Kolors</button>
                       </div>
-                      <input type="text" id="inputInlineImageModel" value="gpt-image-1" placeholder="填入中转站支持的生图模型名称，如 gpt-image-1, dall-e-3, flux-pro">
+                      <input type="text" id="inputInlineImageModel" value="gpt-image-2" placeholder="填入生图模型名称，如 gpt-image-2, dall-e-3, flux-pro">
                     </div>
                   </div>
                 </div>
 
-                <div class="form-cell wizard-cell-full">
-                  <label>Codex 通信协议格式 (Wire API Protocol)</label>
-                  <div class="wizard-mode-grid">
-                    <div class="wizard-mode-card active" id="cardWireResponses">
-                      <h5>🌟 Responses API 协议 (Codex 官方原生格式 · 推荐)</h5>
-                      <p>支持完整流式事件与原生多模态交互，中转站及 OpenAI 原生首选</p>
-                    </div>
-                    <div class="wizard-mode-card" id="cardWireChat">
-                      <h5>⚡️ Chat Completions 协议 (通用兼容格式)</h5>
-                      <p>适用于仅支持 /v1/chat/completions 的旧版中继或纯 DeepSeek 官方接口</p>
-                    </div>
+                <div class="card-footer-actions" style="margin-top:14px;padding-top:12px;">
+                  <span id="probeResultText" style="font-size:12px;color:var(--text-muted);">同时保存编程 API 与右侧生图设置，并一键同步写入 Codex</span>
+                  <div style="display:flex;gap:10px;">
+                    <button type="button" id="btnSaveCodexConfig" class="apple-btn apple-btn-secondary">💾 保存配置</button>
+                    <button type="button" id="btnSaveAndApplyCodex" class="apple-btn apple-btn-primary">🚀 保存并同步至 Codex</button>
                   </div>
-                  <input type="hidden" id="inputCodexWireApi" value="responses">
-                </div>
-              </div>
-
-              <div class="card-footer-actions">
-                <span id="probeResultText" style="font-size:12px;color:var(--text-muted);">修改后请点击右侧保存并同步至 Codex</span>
-                <div style="display:flex;gap:10px;">
-                  <button type="button" id="btnSaveCodexConfig" class="apple-btn apple-btn-secondary">💾 保存此渠道</button>
-                  <button type="button" id="btnSaveAndApplyCodex" class="apple-btn apple-btn-primary">🚀 保存并同步至 Codex</button>
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- PANEL B: OFFICIAL CODEX ACCOUNT + GLOBAL IMAGE2 SKILL BRIDGE -->
-          <div id="panelCatOfficial" class="hidden">
-            <div class="apple-card">
-              <div class="card-header-clean">
-                <div>
-                  <h4>🔐 Codex 官方客户端原生登录 + 本地视觉 Skill 桥接模式</h4>
-                  <p style="font-size:12px;color:var(--text-muted);margin-top:2px;">
-                    保留 Codex 桌面客户端自带账号（如 6.1 Sol 轻度），向 <code>%USERPROFILE%\.codex\skills\image2</code> 注入全局生图插件。
-                  </p>
-                </div>
-                <span id="badgeSkillBridgeStatus" class="badge-green">全局 Skill 已挂载</span>
-              </div>
-
-              <div class="apple-form-grid mt-12">
-                <div class="form-cell">
-                  <label>官方推理强度预设 (Reasoning Effort)</label>
-                  <select id="selectOfficialEffort">
-                    <option value="low">轻度推理 (low · 响应最快)</option>
-                    <option value="medium" selected>标准推理 (medium · 均衡推荐)</option>
-                    <option value="high">深度推理 (high · 复杂架构)</option>
-                  </select>
-                </div>
-
-                <div class="form-cell">
-                  <label>全局生图插件挂载路径 (%CODEX_HOME%\skills\image2)</label>
-                  <input type="text" id="inputOfficialSkillDir" readonly value="~/.codex/skills/image2">
-                </div>
-              </div>
-
-              <div class="card-footer-actions">
-                <span style="font-size:12px;color:var(--text-muted);">挂载后在 Codex 客户端新开聊天即可直接发送「生成一张...」</span>
-                <button type="button" id="btnInstallSkillBridge" class="apple-btn apple-btn-primary">
-                  <span>🔌 一键注入/更新全局 Image2 视觉插件并应用</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- PANEL C: LOCAL OLLAMA / LM STUDIO ENGINE -->
-          <div id="panelCatLocal" class="hidden">
-            <div class="apple-card">
-              <div class="card-header-clean">
-                <div>
-                  <h4>💻 本地算力免 Key 直连 (Ollama / LM Studio / vLLM)</h4>
-                  <p style="font-size:12px;color:var(--text-muted);margin-top:2px;">
-                    直接连接本机运行的开源代码大模型，无需填写任何 API Key。
-                  </p>
-                </div>
-                <div style="display:flex;gap:6px;">
-                  <button type="button" class="preset-pill btn-local-port" data-url="http://127.0.0.1:11434/v1">Ollama (11434)</button>
-                  <button type="button" class="preset-pill btn-local-port" data-url="http://127.0.0.1:1234/v1">LM Studio (1234)</button>
-                </div>
-              </div>
-
-              <div class="apple-form-grid mt-12">
-                <div class="form-cell">
-                  <label>本机推理服务地址</label>
-                  <input type="text" id="inputLocalBaseUrl" value="http://127.0.0.1:11434/v1">
-                </div>
-
-                <div class="form-cell">
-                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
-                    <label style="margin:0;">本机模型标识</label>
-                    <button type="button" id="btnScanLocalModels" class="quick-model-tag">🔍 扫描本机已安装模型</button>
+            <!-- PANEL B: OFFICIAL CODEX ACCOUNT + GLOBAL IMAGE2 SKILL BRIDGE -->
+            <div id="panelCatOfficial" class="hidden">
+              <div class="apple-card">
+                <div class="card-header-clean">
+                  <div>
+                    <h4>🔐 Codex 官方客户端原生登录 + 本地视觉 Skill 桥接模式</h4>
+                    <p style="font-size:12px;color:var(--text-muted);margin-top:2px;">
+                      保留 Codex 桌面客户端自带账号登录，向 <code>%USERPROFILE%\.codex\skills\image2</code> 注入全局生图插件。
+                    </p>
                   </div>
-                  <input type="text" id="inputLocalModel" value="qwen2.5-coder:14b" placeholder="例如：qwen2.5-coder:14b, deepseek-r1:14b">
+                  <span id="badgeSkillBridgeStatus" class="badge-green">全局 Skill 已挂载</span>
+                </div>
+
+                <div class="apple-form-grid mt-12">
+                  <div class="form-cell">
+                    <label>官方推理强度预设 (Reasoning Effort)</label>
+                    <select id="selectOfficialEffort">
+                      <option value="low">轻度推理 (low · 响应最快)</option>
+                      <option value="medium" selected>标准推理 (medium · 均衡推荐)</option>
+                      <option value="high">深度推理 (high · 复杂架构)</option>
+                    </select>
+                  </div>
+
+                  <div class="form-cell">
+                    <label>全局生图插件挂载路径 (%CODEX_HOME%\skills\image2)</label>
+                    <input type="text" id="inputOfficialSkillDir" readonly value="~/.codex/skills/image2">
+                  </div>
+                </div>
+
+                <div class="card-footer-actions">
+                  <span style="font-size:12px;color:var(--text-muted);">挂载后在 Codex 客户端即可直接发送「生成一张...」调用生图引擎</span>
+                  <button type="button" id="btnInstallSkillBridge" class="apple-btn apple-btn-primary">
+                    <span>🔌 一键注入/更新全局 Image2 视觉插件并应用</span>
+                  </button>
                 </div>
               </div>
-
-              <div class="card-footer-actions">
-                <span style="font-size:12px;color:var(--text-muted);">生图功能仍会调用你配置的视觉生图引擎</span>
-                <button type="button" id="btnApplyLocalLlm" class="apple-btn apple-btn-primary">
-                  <span>🚀 激活本地算力并同步至 Codex</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- REAL-TIME GATEWAY CAPTURE MONITOR -->
-          <div class="live-monitor-card">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <div>
-                <h4 style="font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;">
-                  <span class="live-dot"></span>
-                  <span>实时网关与 Skill 消息捕捉监控台 (Live Capture Monitor)</span>
-                </h4>
-                <p style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">
-                  当你在 Codex 客户端发送消息或触发画图时，此处会实时闪现捕捉到的消息与生图自愈状态，并弹出顶部灵动岛通知
-                </p>
-              </div>
-              <div style="display:flex;gap:8px;">
-                <button type="button" id="btnTestGatewayCapture" class="apple-btn apple-btn-secondary" style="padding:5px 12px;font-size:11.5px;">
-                  <span>📡 发送模拟捕捉测试</span>
-                </button>
-                <button type="button" id="btnClearEvents" class="apple-btn apple-btn-secondary" style="padding:5px 10px;font-size:11.5px;">
-                  <span>清空记录</span>
-                </button>
-              </div>
             </div>
 
-            <div class="live-events-list" id="liveEventsList"></div>
+            <!-- PANEL C: LOCAL OLLAMA / LM STUDIO ENGINE -->
+            <div id="panelCatLocal" class="hidden">
+              <div class="apple-card">
+                <div class="card-header-clean">
+                  <div>
+                    <h4>💻 本地算力免 Key 直连 (Ollama / LM Studio / vLLM)</h4>
+                    <p style="font-size:12px;color:var(--text-muted);margin-top:2px;">
+                      直接连接本机运行的开源代码大模型，无需填写任何 API Key。
+                    </p>
+                  </div>
+                  <div style="display:flex;gap:6px;">
+                    <button type="button" class="preset-pill btn-local-port" data-url="http://127.0.0.1:11434/v1">Ollama (11434)</button>
+                    <button type="button" class="preset-pill btn-local-port" data-url="http://127.0.0.1:1234/v1">LM Studio (1234)</button>
+                  </div>
+                </div>
+
+                <div class="apple-form-grid mt-12">
+                  <div class="form-cell">
+                    <label>本机推理服务地址</label>
+                    <input type="text" id="inputLocalBaseUrl" value="http://127.0.0.1:11434/v1">
+                  </div>
+
+                  <div class="form-cell">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+                      <label style="margin:0;">本机模型标识</label>
+                      <button type="button" id="btnScanLocalModels" class="quick-model-tag">🔍 扫描本机已安装模型</button>
+                    </div>
+                    <input type="text" id="inputLocalModel" value="qwen2.5-coder:14b" placeholder="例如：qwen2.5-coder:14b, deepseek-r1:14b">
+                  </div>
+                </div>
+
+                <div class="card-footer-actions">
+                  <span style="font-size:12px;color:var(--text-muted);">生图功能仍会调用你配置的视觉生图引擎</span>
+                  <button type="button" id="btnApplyLocalLlm" class="apple-btn apple-btn-primary">
+                    <span>🚀 激活本地算力并同步至 Codex</span>
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
-        <!-- TAB 2: DUAL ENGINE INTERCEPTION CENTER -->
+        <!-- TAB: DUAL ENGINE INTERCEPTION & REAL-TIME MONITOR -->
         <section id="tab-dual-engine" class="tab-pane">
           <div class="dual-engine-cards">
             <div class="engine-card">
@@ -1032,7 +1096,7 @@ body {
               <div class="engine-desc-body">
                 <p>内置高精度语义识别器 + 全局 <code>image2</code> Skill 双保险：</p>
                 <ul>
-                  <li><strong>自然语言直接画图</strong>：在 Codex 中直接输入「生成一张中国20世纪过年的全家福」，网关自动识别生图意图并调用视觉模型生成图片。</li>
+                  <li><strong>自然语言直接画图</strong>：在 Codex 中直接输入画图需求，网关自动识别生图意图并调用视觉模型生成图片。</li>
                   <li><strong>看图写代码 0 误判</strong>：包含「代码/组件/React/报错/参考这张图」等编程词汇时 100% 透传给编程大模型。</li>
                 </ul>
               </div>
@@ -1060,7 +1124,7 @@ body {
                 <p>在 Codex 中输入以 <code>/img</code>、<code>/draw</code> 或 <code>画图：</code> 开头的内容时：</p>
                 <ul>
                   <li><strong>0 Token 开销</strong>：不经过对话大模型，本地网关 0ms 截获并直接调用生图 API。</li>
-                  <li><strong>模型不可用自动探测自愈</strong>：若当前生图模型不在你的中转站分组内，系统会自动拉取该中转站的模型列表寻找可用生图模型重试。</li>
+                  <li><strong>模型不可用自动探测自愈</strong>：若当前生图模型不可用，系统会自动拉取模型列表寻找可用生图模型重试。</li>
                 </ul>
               </div>
               <div class="engine-meta-bar">
@@ -1086,6 +1150,31 @@ body {
               </div>
             </div>
           </div>
+
+          <!-- REAL-TIME GATEWAY CAPTURE MONITOR -->
+          <div class="live-monitor-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <h4 style="font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;">
+                  <span class="live-dot"></span>
+                  <span>实时网关与 Skill 消息捕捉监控台 (Live Capture Monitor)</span>
+                </h4>
+                <p style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">
+                  当你在 Codex 客户端发送消息或触发画图时，此处会实时闪现捕捉到的消息与生图自愈状态
+                </p>
+              </div>
+              <div style="display:flex;gap:8px;">
+                <button type="button" id="btnTestGatewayCapture" class="apple-btn apple-btn-secondary" style="padding:5px 12px;font-size:11.5px;">
+                  <span>📡 发送模拟捕捉测试</span>
+                </button>
+                <button type="button" id="btnClearEvents" class="apple-btn apple-btn-secondary" style="padding:5px 10px;font-size:11.5px;">
+                  <span>清空记录</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="live-events-list" id="liveEventsList"></div>
+          </div>
         </section>
 
         <!-- TAB 3: CREATIVE CANVAS -->
@@ -1102,7 +1191,7 @@ body {
                   <button class="inspire-chip" data-prompt="中国20世纪80年代春节全家福，暖色调怀旧胶片质感，大红灯笼，搪瓷杯，温馨喜庆">🏮 20世纪春节全家福</button>
                   <button class="inspire-chip" data-prompt="极简主义雪山日出，柔和日光，4K桌面壁纸">🏔️ 极简雪山日出</button>
                   <button class="inspire-chip" data-prompt="未来赛博朋克霓虹街道，雨夜积水倒影，电影感光影">🌆 赛博朋克雨夜</button>
-                  <button class="inspire-chip" data-prompt="苹果风格极简玻璃拟态 UI 图标，发光粒子，半透明质感"> 玻璃拟态图标</button>
+                  <button class="inspire-chip" data-prompt="苹果风格极简玻璃拟态 UI 图标，发光粒子，半透明质感">✦ 玻璃拟态图标</button>
                 </div>
               </div>
 
@@ -1186,7 +1275,7 @@ body {
 
                 <div class="form-cell">
                   <label>生图接口 Base URL（通常与中转站一致，含 /v1）</label>
-                  <input type="text" id="inputImageBaseUrl" placeholder="https://euzhi.vip/v1">
+                  <input type="text" id="inputImageBaseUrl" placeholder="https://api.openai.com/v1">
                 </div>
 
                 <!-- NEW: Online Fetch Models for Image Generation Engine! -->
@@ -1293,7 +1382,7 @@ body {
     <div class="onboarding-dialog">
       <div class="onboarding-header">
         <div class="onboarding-header-left">
-          <div class="onboarding-logo"></div>
+          <div class="onboarding-logo">⚡</div>
           <div>
             <h3 style="font-size:17.5px;font-weight:700;">欢迎使用 Codex Studio · 新手教学与快速配置向导</h3>
             <p style="font-size:12px;color:var(--text-muted);">首次启动自动弹出 · 支持从中转站直接拉取【编程 + 生图】双模型列表自动选取</p>
@@ -1331,9 +1420,9 @@ body {
             <span>填入中转站地址与令牌，点击「🔄 一键拉取模型列表」直接下拉选取</span>
           </div>
           <div style="display:flex;gap:6px;">
-            <button type="button" class="quick-model-tag wiz-preset-btn" data-url="https://euzhi.vip/v1" data-model="gpt-4o">Euzhi中转</button>
-            <button type="button" class="quick-model-tag wiz-preset-btn" data-url="https://api.openai-proxy.org/v1" data-model="gpt-4o">标准中转</button>
-            <button type="button" class="quick-model-tag wiz-preset-btn" data-url="https://api.deepseek.com/v1" data-model="deepseek-chat">DeepSeek</button>
+            <button type="button" class="quick-model-tag wiz-preset-btn" data-url="https://api.openai.com/v1" data-model="gpt-4o">OpenAI 官方格式</button>
+            <button type="button" class="quick-model-tag wiz-preset-btn" data-url="https://api.deepseek.com/v1" data-model="deepseek-chat">DeepSeek 官方</button>
+            <button type="button" class="quick-model-tag wiz-preset-btn" data-url="http://127.0.0.1:11434/v1" data-model="qwen2.5-coder:14b">本机 Ollama</button>
           </div>
         </div>
 
@@ -1341,7 +1430,7 @@ body {
           <div class="wizard-form-grid">
             <div class="wizard-cell">
               <label>中转站接口地址 (Base URL · 需以 /v1 结尾)</label>
-              <input type="text" id="wizBaseUrl" placeholder="https://euzhi.vip/v1" value="https://euzhi.vip/v1">
+              <input type="text" id="wizBaseUrl" placeholder="https://api.openai.com/v1" value="https://api.openai.com/v1">
             </div>
             <div class="wizard-cell">
               <label>API Key / 令牌 (sk-...)</label>
@@ -1475,12 +1564,31 @@ body {
 
   <script>
 /**
- * Codex Studio v2.5.0 - Apple HIG Frontend Controller
+ * Codex Studio v2.6.0 - Apple HIG Frontend Controller
  * Features:
  *  - Online Model Fetching & Categorized Dropdowns for BOTH Coding & Image Generation Engine
  *  - Guaranteed First-Time Onboarding Tutorial Popup (driven by backend data/config.json)
  *  - Real-Time Request Capture Polling & Dynamic Island Toast
  */
+
+// Force Widescreen Landscape Window Orientation on Startup (Never Portrait/Vertical)
+function enforceWidescreenWindow() {
+  try {
+    const availW = (window.screen && window.screen.availWidth) || 1920;
+    const availH = (window.screen && window.screen.availHeight) || 1080;
+    const targetW = Math.min(1440, Math.max(1280, Math.round(availW * 0.82)));
+    const targetH = Math.min(860, Math.max(760, Math.round(availH * 0.82)));
+    if (!window.outerWidth || window.outerWidth < 1180 || window.outerHeight >= window.outerWidth * 0.88) {
+      window.resizeTo(targetW, targetH);
+      const left = Math.max(0, Math.round((availW - targetW) / 2));
+      const top = Math.max(0, Math.round((availH - targetH) / 2));
+      window.moveTo(left, top);
+    }
+  } catch (e) {}
+}
+enforceWidescreenWindow();
+window.addEventListener('DOMContentLoaded', enforceWidescreenWindow);
+window.addEventListener('load', () => setTimeout(enforceWidescreenWindow, 60));
 
 const state = {
   currentTab: 'tab-codex-hub',
@@ -1508,7 +1616,7 @@ const $$ = sel => document.querySelectorAll(sel);
 const LOCAL_SERVICE_TOKEN = document.querySelector('meta[name="image2-local-token"]')?.content ||
                             'AguLw4mZOaKQiKkm5I8V-K8545Dao7LysiUr-2edpqg';
 
-function showToast(msg, icon = '', duration = 3600) {
+function showToast(msg, icon = '⚡', duration = 3600) {
   const b = $('noticeBanner');
   $('noticeIcon').textContent = icon;
   $('noticeMessage').textContent = msg;
@@ -1720,7 +1828,12 @@ async function openFolderInExplorer(folderType = 'outputs', customPath = '') {
   }
 }
 
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) pollLiveGatewayActivity();
+});
+
 async function pollLiveGatewayActivity() {
+  if (document.hidden) return;
   try {
     const h = await fetch('/api/health', {
       headers: { 'Accept': 'application/json', 'X-Image2-Local-Token': LOCAL_SERVICE_TOKEN }
@@ -1817,11 +1930,11 @@ function switchTab(tabId) {
   $$('.tab-pane').forEach(p => p.classList.toggle('active', p.id === tabId));
 
   const titleMap = {
-    'tab-codex-hub': { title: 'Codex 接入与渠道中枢', sub: '按分类提供差异化接入 · 支持编程与生图双模型在线拉取与智能容错' },
-    'tab-dual-engine': { title: '双引擎拦截与监控中心', sub: '方案 1 自然语言生图意图识别 + 方案 2 /img 指令直达' },
+    'tab-codex-hub': { title: 'API 与生图总览', sub: '宽屏左右双栏同屏共管 · 编程 API 渠道与视觉生图引擎一站式配置' },
+    'tab-settings': { title: '独立生图引擎与本地存储管理', sub: '管理独立生图渠道、在线拉取生图模型列表 · 查看本地文件路径与备份重置' },
+    'tab-dual-engine': { title: '双引擎拦截与实时网关监控', sub: '方案 1 自然语言生图意图捕捉 + 方案 2 /img 指令直达 + 实时请求监控' },
     'tab-creative-canvas': { title: 'AI 视觉工坊', sub: '直接在此测试生图 API 或进行多参考图创作' },
-    'tab-gallery': { title: '本地作品画廊', sub: '浏览、下载或复用保存在本地 outputs/ 目录的图像' },
-    'tab-settings': { title: '生图引擎设置与数据清理中心', sub: '在线拉取中转站生图模型列表 · 查看本地存储路径与一键重置' }
+    'tab-gallery': { title: '本地作品画廊', sub: '浏览、下载或复用保存在本地 outputs/ 目录的图像' }
   };
   const t = titleMap[tabId] || titleMap['tab-codex-hub'];
   $('mainStageTitle').textContent = t.title;
@@ -1864,6 +1977,109 @@ async function triggerGC() {
 
 // 3. Codex Hub
 function setupCodexHub() {
+  // Express One-Click Full-Blooded GPT + Native Relay Image Gen Controller
+  $$('.btn-express-url').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $('expressBaseUrl').value = btn.getAttribute('data-url');
+      $('inputCodexBaseUrl').value = btn.getAttribute('data-url');
+    });
+  });
+
+  if ($('btnToggleExpressKeyVis')) {
+    $('btnToggleExpressKeyVis').addEventListener('click', () => {
+      const inp = $('expressApiKey');
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+    });
+  }
+
+  if ($('btnToggleAdvancedManager')) {
+    $('btnToggleAdvancedManager').addEventListener('click', () => {
+      const box = $('advancedMultiChannelContainer');
+      const isHidden = box.classList.toggle('hidden');
+      $('txtToggleAdvancedManager').textContent = isHidden ? '🛠️ 展开高级多渠道管理' : '🛠️ 收起高级多渠道管理';
+    });
+  }
+
+  const syncHomeImageModeUI = () => {
+    const isSync = $('chkMainSyncImage') ? $('chkMainSyncImage').checked : true;
+    const standaloneBox = $('homeStandaloneImageFields');
+    const badge = $('badgeHomeImageMode');
+    if (standaloneBox) standaloneBox.classList.toggle('hidden', isSync);
+    if (badge) {
+      badge.textContent = isSync ? '一Key双用联动' : '独立生图接口';
+      badge.className = isSync ? 'badge-green' : 'badge-blue';
+    }
+  };
+  if ($('chkMainSyncImage')) {
+    $('chkMainSyncImage').addEventListener('change', syncHomeImageModeUI);
+  }
+  if ($('btnJumpToStandaloneImageTab')) {
+    $('btnJumpToStandaloneImageTab').addEventListener('click', () => switchTab('tab-settings'));
+  }
+  if ($('btnToggleHomeImageKeyVis')) {
+    $('btnToggleHomeImageKeyVis').addEventListener('click', () => {
+      const inp = $('inputHomeImageApiKey');
+      if (inp) inp.type = inp.type === 'password' ? 'text' : 'password';
+    });
+  }
+
+  if ($('btnExpressOneClickActivate')) {
+    $('btnExpressOneClickActivate').addEventListener('click', async () => {
+      const baseUrl = ($('inputCodexBaseUrl').value || $('expressBaseUrl').value || '').trim();
+      const apiKey = ($('inputCodexApiKey').value || $('expressApiKey').value || '').trim();
+      if (!baseUrl) {
+        showToast('请先填入中转站接口地址 Base URL', '⚠️');
+        $('expressBaseUrl').focus();
+        return;
+      }
+      const btn = $('btnExpressOneClickActivate');
+      const origHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<span>⏳ 正在嗅探满血模型并激活...</span>';
+      try {
+        const res = await api('/api/codex/one-click-full-gpt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ base_url: baseUrl, api_key: apiKey })
+        });
+        $('expressBaseUrl').value = res.base_url || baseUrl;
+        $('lblExpressActiveModels').textContent = `主力模型: ${res.coding_model} (${res.wire_api} 原生协议) | 生图模型: ${res.image_model}`;
+        showToast(res.message || '⚡ 一键满血激活成功！', '🚀');
+        await refreshAll();
+      } catch (e) {
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
+      }
+    });
+  }
+
+  if ($('btnExpressVerifyImage')) {
+    $('btnExpressVerifyImage').addEventListener('click', async () => {
+      const btn = $('btnExpressVerifyImage');
+      const orig = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<span>⏳ 正在校验生图...</span>';
+      try {
+        const res = await api('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: 'Apple keynote style minimalist glowing glass icon, 4k',
+            size: '1024x1024',
+            quality: 'standard',
+            dry_run: true
+          })
+        });
+        showToast(`✅ 生图通道就绪！当前绑定: ${res.model} (${res.target_url})`, '🎨');
+      } catch (e) {
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = orig;
+      }
+    });
+  }
+
   $$('.category-tab-card').forEach(card => {
     card.addEventListener('click', () => {
       switchConnectionCategory(card.getAttribute('data-cat'));
@@ -1876,7 +2092,7 @@ function setupCodexHub() {
       id: `codex-relay-${Date.now().toString(36)}`,
       category: 'relay_api',
       name: `自定义 API 渠道 #${count}`,
-      base_url: 'https://euzhi.vip/v1',
+      base_url: 'https://api.openai.com/v1',
       model: 'gpt-4o',
       wire_api: 'responses',
       api_key: ''
@@ -1980,11 +2196,18 @@ function setupCodexHub() {
     $('inlineImageSelectArea').classList.remove('hidden');
   });
 
-  // Inline Fetch Image Models button inside One-Key Dual-Use Card
+  // Inline Fetch Image Models button inside Homepage Right Column
   $('btnInlineFetchImageModels').addEventListener('click', () => {
+    const useSync = $('chkMainSyncImage') ? $('chkMainSyncImage').checked : true;
+    const imgUrl = (!useSync && $('inputHomeImageBaseUrl') && $('inputHomeImageBaseUrl').value.trim())
+      ? $('inputHomeImageBaseUrl').value.trim()
+      : $('inputCodexBaseUrl').value.trim();
+    const imgKey = (!useSync && $('inputHomeImageApiKey') && $('inputHomeImageApiKey').value.trim())
+      ? $('inputHomeImageApiKey').value.trim()
+      : $('inputCodexApiKey').value.trim();
     fetchModelsForTarget({
-      baseUrl: $('inputCodexBaseUrl').value.trim(),
-      apiKey: $('inputCodexApiKey').value.trim(),
+      baseUrl: imgUrl,
+      apiKey: imgKey,
       purpose: 'image',
       selectEl: $('inlineImageModelSelect'),
       areaEl: $('inlineImageSelectArea'),
@@ -2111,6 +2334,11 @@ async function loadCodexInfo() {
     state.mode2_prefix_direct = info.mode2_prefix_direct !== false;
 
     $('chkMainSyncImage').checked = state.syncImageKey;
+    if ($('homeStandaloneImageFields')) $('homeStandaloneImageFields').classList.toggle('hidden', state.syncImageKey);
+    if ($('badgeHomeImageMode')) {
+      $('badgeHomeImageMode').textContent = state.syncImageKey ? '一Key双用联动' : '独立生图接口';
+      $('badgeHomeImageMode').className = state.syncImageKey ? 'badge-green' : 'badge-blue';
+    }
     $('inputInlineImageModel').value = state.activeImageModel;
     $('chkToggleMode1').checked = state.mode1_llm_tool;
     $('chkToggleMode2').checked = state.mode2_prefix_direct;
@@ -2179,6 +2407,12 @@ function renderCodexProviderCards() {
 }
 
 function fillCodexForm(p) {
+  if ($('expressBaseUrl') && p.base_url) $('expressBaseUrl').value = p.base_url;
+  if ($('expressApiKey')) $('expressApiKey').value = p.api_key || '';
+  if ($('lblExpressActiveModels')) {
+    const imgP = state.imageProviders.find(x => x.id === state.activeImage) || state.imageProviders[0] || {};
+    $('lblExpressActiveModels').textContent = `主力模型: ${p.model || 'gpt-4o'} (${p.wire_api || 'responses'}) | 生图模型: ${imgP.model || 'gpt-image-2'}`;
+  }
   $('inputCodexName').value = p.name || '';
   $('inputCodexApiKey').value = p.api_key || '';
   $('inputCodexModel').value = p.model || 'gpt-4o';
@@ -2202,7 +2436,7 @@ async function saveCodexConfig(alsoApply = false) {
     name: $('inputCodexName').value.trim() || p.name,
     api_key: $('inputCodexApiKey').value.trim(),
     model: $('inputCodexModel').value.trim() || 'gpt-4o',
-    base_url: $('inputCodexBaseUrl').value.trim() || 'https://api.openai-proxy.org/v1',
+    base_url: $('inputCodexBaseUrl').value.trim() || 'https://api.openai.com/v1',
     wire_api: $('inputCodexWireApi').value || 'responses'
   };
 
@@ -2217,6 +2451,26 @@ async function saveCodexConfig(alsoApply = false) {
         image_model: inlineImgModel
       })
     });
+
+    if (!syncImg) {
+      const imgP = state.imageProviders.find(item => item.id === state.activeImage) || state.imageProviders[0];
+      if (imgP) {
+        await api('/api/providers/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'image',
+            provider: {
+              ...imgP,
+              base_url: ($('inputHomeImageBaseUrl')?.value || '').trim() || payload.base_url,
+              api_key: ($('inputHomeImageApiKey')?.value || '').trim() || payload.api_key,
+              model: inlineImgModel,
+              generation_path: ($('inputHomeImageGenPath')?.value || '').trim() || '/images/generations'
+            }
+          })
+        });
+      }
+    }
 
     if (alsoApply) {
       const appRes = await api('/api/codex/apply', {
@@ -2603,7 +2857,7 @@ function setupSettingsAndStorage() {
       ...p,
       api_key: $('inputImageApiKey').value.trim(),
       model: newModel,
-      base_url: $('inputImageBaseUrl').value.trim() || 'https://api.openai-proxy.org/v1',
+      base_url: $('inputImageBaseUrl').value.trim() || 'https://api.openai.com/v1',
       generation_path: $('inputImageGenPath').value.trim() || '/images/generations'
     };
     await api('/api/providers/save', {
@@ -2742,10 +2996,13 @@ async function loadProviders() {
 
 function fillImageSettings(p) {
   $('inputImageApiKey').value = p.api_key || '';
-  $('inputImageModel').value = p.model || 'gpt-image-1';
-  $('inputInlineImageModel').value = p.model || 'gpt-image-1';
+  $('inputImageModel').value = p.model || 'gpt-image-2';
+  $('inputInlineImageModel').value = p.model || 'gpt-image-2';
   $('inputImageBaseUrl').value = p.base_url || '';
   $('inputImageGenPath').value = p.generation_path || '/images/generations';
+  if ($('inputHomeImageApiKey')) $('inputHomeImageApiKey').value = p.api_key || '';
+  if ($('inputHomeImageBaseUrl')) $('inputHomeImageBaseUrl').value = p.base_url || '';
+  if ($('inputHomeImageGenPath')) $('inputHomeImageGenPath').value = p.generation_path || '/images/generations';
 }
 
 // 8. Interactive Onboarding Tutorial Wizard
